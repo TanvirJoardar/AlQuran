@@ -1817,7 +1817,7 @@ body {
 
 .admin-page-list-header {
   display: grid;
-  grid-template-columns: 120px 140px 140px 1fr 100px;
+  grid-template-columns: 60px 90px 130px 130px 1fr 110px;
   padding: 12px 18px;
   background: linear-gradient(135deg, #1b5e3b, #2e7d52);
   color: #fff;
@@ -1856,7 +1856,7 @@ body {
 
 .admin-page-row-main {
   display: grid;
-  grid-template-columns: 120px 140px 140px 1fr 100px;
+  grid-template-columns: 60px 90px 130px 130px 1fr 110px;
   padding: 10px 18px;
   cursor: pointer;
   align-items: center;
@@ -1878,15 +1878,39 @@ body {
 
 .admin-custom-badge {
   display: inline-block;
-  margin-left: 8px;
-  padding: 2px 6px;
+  margin-left: 6px;
+  padding: 2px 5px;
   background: #c9a84c;
   color: #fff;
-  font-size: 0.62rem;
+  font-size: 0.58rem;
   border-radius: 3px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+
+.admin-dup-badge {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 2px 5px;
+  background: #e65100;
+  color: #fff;
+  font-size: 0.58rem;
+  border-radius: 3px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.admin-dup-warning {
+  color: #e65100;
+  font-weight: 600;
+  font-size: 0.78rem;
+}
+
+.admin-page-idx {
+  font-size: 0.78rem;
+  color: #888;
+  font-weight: 600;
 }
 
 .admin-range {
@@ -2083,7 +2107,7 @@ body {
 @media (max-width: 900px) {
   .admin-page-list-header,
   .admin-page-row-main {
-    grid-template-columns: 90px 110px 110px 1fr 80px;
+    grid-template-columns: 45px 70px 100px 100px 1fr 80px;
     padding: 8px 12px;
     font-size: 0.72rem;
   }
@@ -2152,6 +2176,50 @@ body {
 
   .admin-stat-value {
     font-size: 1.2rem;
+  }
+}
+
+/* ============================== */
+/* == DUAL PAGE (SIDE BY SIDE) == */
+/* ============================== */
+
+.hafezi-page-wrapper.dual {
+  display: flex;
+  gap: 12px;
+  flex-direction: row;
+}
+
+.hafezi-page-half {
+  flex: 1;
+  min-width: 0;
+}
+
+.hafezi-page-half .hafezi-page-content {
+  font-size: 0.9em;
+}
+
+.hafezi-dual-badge {
+  display: inline-block;
+  margin-left: 10px;
+  padding: 2px 8px;
+  background: #e65100;
+  color: #fff;
+  font-size: 0.65rem;
+  border-radius: 4px;
+  font-weight: 700;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+@media (max-width: 900px) {
+  .hafezi-page-wrapper.dual {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .hafezi-page-half {
+    flex: none;
+    width: 100%;
   }
 }
 

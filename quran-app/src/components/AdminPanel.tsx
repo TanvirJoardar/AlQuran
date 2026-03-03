@@ -28,7 +28,7 @@ interface AdminPanelProps {
   onMappingsChanged: () => void;
 }
 
-// Arabic Juz names (shared)
+// Arabic Juz names
 const juzNames: Record<number, string> = {
   1: 'الم', 2: 'سَيَقُولُ', 3: 'تِلْكَ الرُّسُلُ', 4: 'لَنْ تَنَالُوا',
   5: 'وَالْمُحْصَنَاتُ', 6: 'لَا يُحِبُّ اللَّهُ', 7: 'وَإِذَا سَمِعُوا',
@@ -48,6 +48,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ surahs, onMappingsChange
   const [editingPage, setEditingPage] = useState<number | null>(null);
   const [editStart, setEditStart] = useState(0);
   const [editEnd, setEditEnd] = useState(0);
+  const [editDisplayPage, setEditDisplayPage] = useState(0);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [customCount, setCustomCount] = useState(0);
   const [expandedPage, setExpandedPage] = useState<number | null>(null);
@@ -92,13 +93,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ surahs, onMappingsChange
     setEditingPage(mapping.pageIndex);
     setEditStart(mapping.customStartAyah);
     setEditEnd(mapping.customEndAyah);
+    setEditDisplayPage(mapping.displayPage);
     setExpandedPage(mapping.pageIndex);
   };
 
   const handleSave = () => {
     if (editingPage === null) return;
 
-    // Validate
     if (editStart < 1 || editEnd < 1) {
       showToast('Ayah numbers must be at least 1', 'error');
       return;
@@ -111,8 +112,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ surahs, onMappingsChange
       showToast(`End ayah cannot exceed ${totalAyahs}`, 'error');
       return;
     }
+    if (editDisplayPage < 0) {
+      showToast('Display page number cannot be negative', 'error');
+      return;
+    }
 
-    updatePageMapping(selectedJuz, editingPage, editStart, editEnd);
+    updatePageMapping(selectedJuz, editingPage, editStart, editEnd, editDisplayPage);
     setEditingPage(null);
     loadMappings();
     onMappingsChanged();
@@ -127,7 +132,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ surahs, onMappingsChange
     resetPageMapping(mapping.juz, mapping.pageIndex);
     loadMappings();
     onMappingsChanged();
-    showToast(`Page ${mapping.originalPage} reset to original`, 'success');
+    showToast(`Page index ${mapping.pageIndex} reset to original`, 'success');
   };
 
   const handleResetAll = () => {
@@ -144,7 +149,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ surahs, onMappingsChange
     const data = exportDatabase();
     if (!data) return;
 
-    const blob = new Blob([data], { type: 'application/x-sqlite3' });
+    const blob = new Blob([data.buffer as ArrayBuffer], { type: 'application/x-sqlite3' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -154,7 +159,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ surahs, onMappingsChange
     showToast('Database exported successfully', 'success');
   };
 
-  // Get ayah info for preview
   const getAyahInfo = (globalNumber: number) => {
     const ayah = allAyahs.find(a => a.number === globalNumber);
     if (!ayah) return null;
@@ -172,6 +176,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ surahs, onMappingsChange
     }
     return `${startAyah.surahName} ${startAyah.numberInSurah} → ${endAyah.surahName} ${endAyah.numberInSurah} (${count} ayahs)`;
   };
+
+  // Check for duplicate display page numbers
+  const duplicateDisplayPages = useMemo(() => {
+    const counts = new Map<number, number>();
+    mappings.forEach(m => {
+      counts.set(m.displayPage, (counts.get(m.displayPage) || 0) + 1);
+    });
+    const dupes = new Set<number>();
+    counts.forEach((count, page) => {
+      if (count > 1) dupes.add(page);
+    });
+    return dupes;
+  }, [mappings]);
 
   const filteredMappings = showOnlyCustom ? mappings.filter(m => m.isCustom) : mappings;
 
@@ -258,7 +275,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ surahs, onMappingsChange
       {/* Page list */}
       <div className="admin-page-list">
         <div className="admin-page-list-header">
-          <span className="admin-col col-page">Page</span>
+          <span className="admin-col col-idx">Index</span>
+          <span className="admin-col col-display">Page #</span>
           <span className="admin-col col-original">Original Range</span>
           <span className="admin-col col-custom">Custom Range</span>
           <span className="admin-col col-info">Ayah Info</span>
@@ -275,6 +293,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ surahs, onMappingsChange
           filteredMappings.map(mapping => {
             const isEditing = editingPage === mapping.pageIndex;
             const isExpanded = expandedPage === mapping.pageIndex;
+            const isDuplicate = duplicateDisplayPages.has(mapping.displayPage);
 
             return (
               <div
@@ -283,9 +302,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ surahs, onMappingsChange
               >
                 {/* Main row */}
                 <div className="admin-page-row-main" onClick={() => setExpandedPage(isExpanded ? null : mapping.pageIndex)}>
-                  <span className="admin-col col-page">
-                    <span className="admin-page-number">{mapping.originalPage}</span>
+                  <span className="admin-col col-idx">
+                    <span className="admin-page-idx">{mapping.pageIndex}</span>
+                  </span>
+                  <span className="admin-col col-display">
+                    <span className="admin-page-number">{mapping.displayPage}</span>
                     {mapping.isCustom && <span className="admin-custom-badge">Custom</span>}
+                    {isDuplicate && <span className="admin-dup-badge">Dup</span>}
                   </span>
                   <span className="admin-col col-original">
                     <span className="admin-range">{mapping.startAyah} — {mapping.endAyah}</span>
@@ -333,8 +356,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ surahs, onMappingsChange
                   <div className="admin-page-expanded">
                     {isEditing ? (
                       <div className="admin-edit-form">
-                        <h4>Edit Page {mapping.originalPage} — Para {mapping.juz}</h4>
+                        <h4>Edit Page Index {mapping.pageIndex} — Para {mapping.juz}</h4>
                         <div className="admin-edit-fields">
+                          <div className="admin-edit-field">
+                            <label>Display Page #</label>
+                            <input
+                              type="number"
+                              min={0}
+                              value={editDisplayPage}
+                              onChange={e => setEditDisplayPage(Number(e.target.value))}
+                              className="admin-input"
+                            />
+                            <span className="admin-edit-hint">
+                              Original: {mapping.pageIndex}
+                              {mappings.some(m => m.displayPage === editDisplayPage && m.pageIndex !== mapping.pageIndex) && (
+                                <span className="admin-dup-warning"> — Duplicate! Will show side by side</span>
+                              )}
+                            </span>
+                          </div>
                           <div className="admin-edit-field">
                             <label>Start Ayah (Global #)</label>
                             <input
@@ -372,11 +411,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ surahs, onMappingsChange
                         {/* Live preview */}
                         <div className="admin-edit-preview">
                           <Eye size={14} />
-                          <span>Preview: {getAyahRangePreview(editStart, editEnd)}</span>
+                          <span>Preview: Page {editDisplayPage} — {getAyahRangePreview(editStart, editEnd)}</span>
                         </div>
 
                         <div className="admin-edit-original">
-                          <span>Original: {mapping.startAyah} — {mapping.endAyah}</span>
+                          <span>Original: Page {mapping.pageIndex} — Ayahs {mapping.startAyah}–{mapping.endAyah}</span>
                           <span>({getAyahRangePreview(mapping.startAyah, mapping.endAyah)})</span>
                         </div>
 
@@ -393,6 +432,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ surahs, onMappingsChange
                     ) : (
                       <div className="admin-page-details">
                         <div className="admin-detail-row">
+                          <span className="admin-detail-label">Page Index:</span>
+                          <span>{mapping.pageIndex}</span>
+                          <span className="admin-detail-info">(Quran page {mapping.originalPage})</span>
+                        </div>
+                        <div className="admin-detail-row">
+                          <span className="admin-detail-label">Display Page #:</span>
+                          <span>{mapping.displayPage}</span>
+                          {mapping.displayPage !== mapping.pageIndex && (
+                            <span className="admin-detail-info">(default: {mapping.pageIndex})</span>
+                          )}
+                        </div>
+                        <div className="admin-detail-row">
                           <span className="admin-detail-label">Original Range:</span>
                           <span>{mapping.startAyah} — {mapping.endAyah}</span>
                           <span className="admin-detail-info">
@@ -406,7 +457,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ surahs, onMappingsChange
                             ({getAyahRangePreview(mapping.customStartAyah, mapping.customEndAyah)})
                           </span>
                         </div>
-                        {/* Preview first ayah text */}
+                        {isDuplicate && (
+                          <div className="admin-detail-row">
+                            <span className="admin-detail-label">⚠ Duplicate:</span>
+                            <span className="admin-dup-warning">
+                              Page #{mapping.displayPage} is shared — pages will show side by side
+                            </span>
+                          </div>
+                        )}
                         {getAyahInfo(mapping.customStartAyah) && (
                           <div className="admin-detail-preview" dir="rtl" lang="ar">
                             <span className="admin-detail-label-ar">First ayah:</span>
