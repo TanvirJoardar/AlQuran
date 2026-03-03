@@ -12,15 +12,18 @@ import {
   ChevronsLeft,
   ChevronsRight,
   BookOpen,
+  Type,
+  Image,
 } from 'lucide-react';
 
 type EnrichedAyah = Ayah & { surahNumber: number; surahName: string; surahArabicName: string };
 
 interface PageData {
   pageNumber: number;       // original quran page number
-  displayPage: number;      // user-editable display page (0-based)
+  displayPage: number;      // user-editable display page (1-based)
   pageIndex: number;        // immutable 0-based index within juz
   ayahs: EnrichedAyah[];
+  pageImage: string | null; // base64-encoded page image
 }
 
 interface JuzData {
@@ -73,6 +76,7 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
   const [selectedDisplayPage, setSelectedDisplayPage] = useState(0);
   const [repeatOn, setRepeatOn] = useState(false);
   const [isPagePlaying, setIsPagePlaying] = useState(false);
+  const [viewMode, setViewMode] = useState<'text' | 'image'>('text');
   const pageContentRef = useRef<HTMLDivElement>(null);
 
   // Build all enriched ayahs once
@@ -115,6 +119,7 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
           displayPage: 0,  // will be set below
           pageIndex: 0,    // will be set below
           ayahs: pageMap.get(a.page)!,
+          pageImage: null,
         });
       }
     });
@@ -125,7 +130,7 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
       pages.sort((a, b) => a.pageNumber - b.pageNumber);
       pages.forEach((p, idx) => {
         p.pageIndex = idx;
-        p.displayPage = idx; // default: 0-based
+        p.displayPage = idx + 1; // default: 1-based
       });
     }
 
@@ -140,6 +145,7 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
           const mapping = customMappings.find(m => m.pageIndex === idx);
           if (mapping) {
             const dp = mapping.displayPage;
+            const img = mapping.pageImage || null;
             if (mapping.isCustom) {
               const customAyahs = allAyahs.filter(
                 a => a.number >= mapping.customStartAyah && a.number <= mapping.customEndAyah
@@ -149,9 +155,10 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
                 displayPage: dp,
                 pageIndex: idx,
                 ayahs: customAyahs,
+                pageImage: img,
               };
             }
-            return { ...page, displayPage: dp, pageIndex: idx };
+            return { ...page, displayPage: dp, pageIndex: idx, pageImage: img };
           }
           return page;
         });
@@ -303,8 +310,16 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
           </div>
         </div>
 
-        {/* Play & Repeat */}
+        {/* View Mode Toggle, Play & Repeat */}
         <div className="hafezi-controls-right">
+          <button
+            className={`hafezi-view-toggle-btn ${viewMode === 'image' ? 'active' : ''}`}
+            onClick={() => setViewMode(viewMode === 'text' ? 'image' : 'text')}
+            title={viewMode === 'text' ? 'Switch to Image view' : 'Switch to Text view'}
+          >
+            {viewMode === 'text' ? <Image size={16} /> : <Type size={16} />}
+            <span>{viewMode === 'text' ? 'Image' : 'Text'}</span>
+          </button>
           <button
             className={`hafezi-repeat-btn ${repeatOn ? 'active' : ''}`}
             onClick={handleToggleRepeat}
@@ -387,6 +402,7 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
             isPlaying={isPlaying}
             onPlayAyah={onPlayAyah}
             isDualPage={isDualPage}
+            viewMode={viewMode}
           />
         ))}
       </div>
@@ -403,6 +419,7 @@ interface SinglePageProps {
   isPlaying: boolean;
   onPlayAyah: (ayah: Ayah) => void;
   isDualPage: boolean;
+  viewMode: 'text' | 'image';
 }
 
 const SinglePage: React.FC<SinglePageProps> = ({
@@ -412,6 +429,7 @@ const SinglePage: React.FC<SinglePageProps> = ({
   isPlaying,
   onPlayAyah,
   isDualPage,
+  viewMode,
 }) => {
   // Detect surah starts on current page
   const surahStartsOnPage = useMemo(() => {
@@ -488,7 +506,24 @@ const SinglePage: React.FC<SinglePageProps> = ({
       </div>
 
       {/* Content */}
-      <div className="hafezi-page-content">
+      {viewMode === 'image' ? (
+        <div className="hafezi-page-content hafezi-image-view">
+          {page.pageImage ? (
+            <img
+              src={page.pageImage}
+              alt={`Page ${page.displayPage} - Para ${selectedJuz}`}
+              className="hafezi-page-image"
+            />
+          ) : (
+            <div className="hafezi-no-image">
+              <Image size={48} />
+              <p>No image uploaded for this page</p>
+              <span>Upload an image from the Admin Panel</span>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="hafezi-page-content">
         {pageLines.map((line, lineIdx) => {
           if (line.surahStart) {
             return (
@@ -527,6 +562,7 @@ const SinglePage: React.FC<SinglePageProps> = ({
           );
         })}
       </div>
+      )}
 
       {/* Page footer */}
       <div className="hafezi-page-footer">

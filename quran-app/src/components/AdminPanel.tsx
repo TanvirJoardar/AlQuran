@@ -7,6 +7,8 @@ import {
   resetAllMappings,
   getCustomMappingsCount,
   exportDatabase,
+  updatePageImage,
+  removePageImage,
   type PageMapping,
 } from '../services/database';
 import {
@@ -21,6 +23,9 @@ import {
   Trash2,
   Edit3,
   Eye,
+  Upload,
+  Image,
+  X,
 } from 'lucide-react';
 
 interface AdminPanelProps {
@@ -53,6 +58,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ surahs, onMappingsChange
   const [customCount, setCustomCount] = useState(0);
   const [expandedPage, setExpandedPage] = useState<number | null>(null);
   const [showOnlyCustom, setShowOnlyCustom] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState<number | null>(null);
 
   // Build a global ayah lookup
   const allAyahs = useMemo(() => {
@@ -112,8 +118,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ surahs, onMappingsChange
       showToast(`End ayah cannot exceed ${totalAyahs}`, 'error');
       return;
     }
-    if (editDisplayPage < 0) {
-      showToast('Display page number cannot be negative', 'error');
+    if (editDisplayPage < 1) {
+      showToast('Display page number must be at least 1', 'error');
       return;
     }
 
@@ -175,6 +181,40 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ surahs, onMappingsChange
       return `${startAyah.surahName} ${startAyah.numberInSurah}-${endAyah.numberInSurah} (${count} ayahs)`;
     }
     return `${startAyah.surahName} ${startAyah.numberInSurah} → ${endAyah.surahName} ${endAyah.numberInSurah} (${count} ayahs)`;
+  };
+
+  const handleImageUpload = (mapping: PageMapping, file: File) => {
+    if (!file.type.startsWith('image/')) {
+      showToast('Please select an image file', 'error');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('Image must be less than 5MB', 'error');
+      return;
+    }
+    setUploadingImage(mapping.pageIndex);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = reader.result as string;
+      updatePageImage(mapping.juz, mapping.pageIndex, base64);
+      loadMappings();
+      onMappingsChanged();
+      setUploadingImage(null);
+      showToast(`Image uploaded for page ${mapping.displayPage}`, 'success');
+    };
+    reader.onerror = () => {
+      setUploadingImage(null);
+      showToast('Failed to read image file', 'error');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveImage = (mapping: PageMapping) => {
+    if (!window.confirm(`Remove image for page ${mapping.displayPage}?`)) return;
+    removePageImage(mapping.juz, mapping.pageIndex);
+    loadMappings();
+    onMappingsChanged();
+    showToast(`Image removed for page ${mapping.displayPage}`, 'success');
   };
 
   // Check for duplicate display page numbers
@@ -309,6 +349,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ surahs, onMappingsChange
                     <span className="admin-page-number">{mapping.displayPage}</span>
                     {mapping.isCustom && <span className="admin-custom-badge">Custom</span>}
                     {isDuplicate && <span className="admin-dup-badge">Dup</span>}
+                    {mapping.pageImage && <span className="admin-img-badge" title="Has image"><Image size={12} /></span>}
                   </span>
                   <span className="admin-col col-original">
                     <span className="admin-range">{mapping.startAyah} — {mapping.endAyah}</span>
@@ -362,13 +403,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ surahs, onMappingsChange
                             <label>Display Page #</label>
                             <input
                               type="number"
-                              min={0}
+                              min={1}
                               value={editDisplayPage}
                               onChange={e => setEditDisplayPage(Number(e.target.value))}
                               className="admin-input"
                             />
                             <span className="admin-edit-hint">
-                              Original: {mapping.pageIndex}
+                              Original: {mapping.pageIndex + 1}
                               {mappings.some(m => m.displayPage === editDisplayPage && m.pageIndex !== mapping.pageIndex) && (
                                 <span className="admin-dup-warning"> — Duplicate! Will show side by side</span>
                               )}
@@ -408,6 +449,56 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ surahs, onMappingsChange
                           </div>
                         </div>
 
+                        {/* Image upload section */}
+                        <div className="admin-image-section">
+                          <h5><Image size={14} /> Page Image</h5>
+                          {mapping.pageImage ? (
+                            <div className="admin-image-preview-wrap">
+                              <img src={mapping.pageImage} alt={`Page ${mapping.displayPage}`} className="admin-image-preview" />
+                              <div className="admin-image-actions">
+                                <label className="admin-btn admin-btn-outline admin-btn-sm">
+                                  <Upload size={12} />
+                                  <span>Replace</span>
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    hidden
+                                    onChange={e => {
+                                      const file = e.target.files?.[0];
+                                      if (file) handleImageUpload(mapping, file);
+                                      e.target.value = '';
+                                    }}
+                                  />
+                                </label>
+                                <button
+                                  className="admin-btn admin-btn-danger admin-btn-sm"
+                                  onClick={() => handleRemoveImage(mapping)}
+                                >
+                                  <X size={12} />
+                                  <span>Remove</span>
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <label className={`admin-image-upload-area ${uploadingImage === mapping.pageIndex ? 'uploading' : ''}`}>
+                              <Upload size={20} />
+                              <span>{uploadingImage === mapping.pageIndex ? 'Uploading...' : 'Click to upload page image'}</span>
+                              <span className="admin-image-hint">PNG, JPG up to 5MB</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                hidden
+                                disabled={uploadingImage === mapping.pageIndex}
+                                onChange={e => {
+                                  const file = e.target.files?.[0];
+                                  if (file) handleImageUpload(mapping, file);
+                                  e.target.value = '';
+                                }}
+                              />
+                            </label>
+                          )}
+                        </div>
+
                         {/* Live preview */}
                         <div className="admin-edit-preview">
                           <Eye size={14} />
@@ -439,8 +530,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ surahs, onMappingsChange
                         <div className="admin-detail-row">
                           <span className="admin-detail-label">Display Page #:</span>
                           <span>{mapping.displayPage}</span>
-                          {mapping.displayPage !== mapping.pageIndex && (
-                            <span className="admin-detail-info">(default: {mapping.pageIndex})</span>
+                          {mapping.displayPage !== mapping.pageIndex + 1 && (
+                            <span className="admin-detail-info">(default: {mapping.pageIndex + 1})</span>
                           )}
                         </div>
                         <div className="admin-detail-row">
@@ -471,6 +562,54 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ surahs, onMappingsChange
                             {getAyahInfo(mapping.customStartAyah)!.text.substring(0, 80)}...
                           </div>
                         )}
+                        {/* Page image section */}
+                        <div className="admin-detail-image-section">
+                          <span className="admin-detail-label"><Image size={14} /> Page Image:</span>
+                          {mapping.pageImage ? (
+                            <div className="admin-image-preview-wrap">
+                              <img src={mapping.pageImage} alt={`Page ${mapping.displayPage}`} className="admin-image-preview" />
+                              <div className="admin-image-actions">
+                                <label className="admin-btn admin-btn-outline admin-btn-sm">
+                                  <Upload size={12} />
+                                  <span>Replace</span>
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    hidden
+                                    onChange={e => {
+                                      const file = e.target.files?.[0];
+                                      if (file) handleImageUpload(mapping, file);
+                                      e.target.value = '';
+                                    }}
+                                  />
+                                </label>
+                                <button
+                                  className="admin-btn admin-btn-danger admin-btn-sm"
+                                  onClick={() => handleRemoveImage(mapping)}
+                                >
+                                  <X size={12} />
+                                  <span>Remove</span>
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <label className={`admin-image-upload-area small ${uploadingImage === mapping.pageIndex ? 'uploading' : ''}`}>
+                              <Upload size={16} />
+                              <span>{uploadingImage === mapping.pageIndex ? 'Uploading...' : 'Upload image'}</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                hidden
+                                disabled={uploadingImage === mapping.pageIndex}
+                                onChange={e => {
+                                  const file = e.target.files?.[0];
+                                  if (file) handleImageUpload(mapping, file);
+                                  e.target.value = '';
+                                }}
+                              />
+                            </label>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>

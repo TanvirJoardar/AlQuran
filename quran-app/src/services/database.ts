@@ -5,12 +5,13 @@ export interface PageMapping {
   juz: number;
   pageIndex: number;       // 0-based page index within the juz (immutable)
   originalPage: number;    // original quran page number
-  displayPage: number;     // user-editable display page number (default = pageIndex)
+  displayPage: number;     // user-editable display page number (default = pageIndex + 1)
   startAyah: number;       // global ayah number start
   endAyah: number;         // global ayah number end
   customStartAyah: number; // user-defined start
   customEndAyah: number;   // user-defined end
   isCustom: boolean;       // whether user has overridden
+  pageImage: string | null; // base64-encoded page image (optional)
 }
 
 const DB_STORAGE_KEY = 'quran_admin_db';
@@ -63,20 +64,28 @@ export async function initDatabase(): Promise<Database> {
         juz INTEGER NOT NULL,
         page_index INTEGER NOT NULL,
         original_page INTEGER NOT NULL,
-        display_page INTEGER NOT NULL DEFAULT 0,
+        display_page INTEGER NOT NULL DEFAULT 1,
         start_ayah INTEGER NOT NULL,
         end_ayah INTEGER NOT NULL,
         custom_start_ayah INTEGER NOT NULL,
         custom_end_ayah INTEGER NOT NULL,
         is_custom INTEGER NOT NULL DEFAULT 0,
+        page_image TEXT,
         UNIQUE(juz, page_index)
       )
     `);
 
     // Migration: add display_page column if upgrading from older schema
     try {
-      db.run('ALTER TABLE page_mappings ADD COLUMN display_page INTEGER NOT NULL DEFAULT 0');
-      db.run('UPDATE page_mappings SET display_page = page_index');
+      db.run('ALTER TABLE page_mappings ADD COLUMN display_page INTEGER NOT NULL DEFAULT 1');
+      db.run('UPDATE page_mappings SET display_page = page_index + 1');
+    } catch {
+      // Column already exists, ignore
+    }
+
+    // Migration: add page_image column if upgrading from older schema
+    try {
+      db.run('ALTER TABLE page_mappings ADD COLUMN page_image TEXT');
     } catch {
       // Column already exists, ignore
     }
@@ -132,7 +141,7 @@ export function seedDefaultMappings(
     // Get sorted pages
     const pages = Array.from(pMap.entries()).sort((a, b) => a[0] - b[0]);
     pages.forEach(([page, range], idx) => {
-      stmt.run([j, idx, page, idx, range.min, range.max, range.min, range.max]);
+      stmt.run([j, idx, page, idx + 1, range.min, range.max, range.min, range.max]);
     });
   }
 
@@ -148,7 +157,7 @@ export function getPageMappings(juz: number): PageMapping[] {
 
   const results = db.exec(
     `SELECT id, juz, page_index, original_page, display_page, start_ayah, end_ayah, 
-            custom_start_ayah, custom_end_ayah, is_custom
+            custom_start_ayah, custom_end_ayah, is_custom, page_image
      FROM page_mappings 
      WHERE juz = ${juz}
      ORDER BY page_index`
@@ -167,6 +176,7 @@ export function getPageMappings(juz: number): PageMapping[] {
     customStartAyah: row[7] as number,
     customEndAyah: row[8] as number,
     isCustom: (row[9] as number) === 1,
+    pageImage: (row[10] as string) || null,
   }));
 }
 
@@ -178,7 +188,7 @@ export function getPageMapping(juz: number, pageIndex: number): PageMapping | nu
 
   const results = db.exec(
     `SELECT id, juz, page_index, original_page, display_page, start_ayah, end_ayah, 
-            custom_start_ayah, custom_end_ayah, is_custom
+            custom_start_ayah, custom_end_ayah, is_custom, page_image
      FROM page_mappings 
      WHERE juz = ${juz} AND page_index = ${pageIndex}
      LIMIT 1`
@@ -198,6 +208,7 @@ export function getPageMapping(juz: number, pageIndex: number): PageMapping | nu
     customStartAyah: row[7] as number,
     customEndAyah: row[8] as number,
     isCustom: (row[9] as number) === 1,
+    pageImage: (row[10] as string) || null,
   };
 }
 
@@ -255,7 +266,7 @@ export function resetPageMapping(juz: number, pageIndex: number): void {
     `UPDATE page_mappings 
      SET custom_start_ayah = start_ayah, 
          custom_end_ayah = end_ayah, 
-         display_page = page_index,
+         display_page = page_index + 1,
          is_custom = 0
      WHERE juz = ${juz} AND page_index = ${pageIndex}`
   );
@@ -273,7 +284,7 @@ export function resetAllMappings(): void {
     `UPDATE page_mappings 
      SET custom_start_ayah = start_ayah, 
          custom_end_ayah = end_ayah, 
-         display_page = page_index,
+         display_page = page_index + 1,
          is_custom = 0`
   );
 
@@ -289,6 +300,38 @@ export function getCustomMappingsCount(): number {
   const results = db.exec('SELECT COUNT(*) FROM page_mappings WHERE is_custom = 1');
   if (results.length === 0) return 0;
   return results[0].values[0][0] as number;
+}
+
+/**
+ * Update or set the page image (base64 encoded) for a specific page
+ */
+export function updatePageImage(
+  juz: number,
+  pageIndex: number,
+  imageBase64: string | null
+): void {
+  if (!db) return;
+
+  const stmt = db.prepare(
+    `UPDATE page_mappings SET page_image = ? WHERE juz = ? AND page_index = ?`
+  );
+  stmt.run([imageBase64, juz, pageIndex]);
+  stmt.free();
+
+  saveToStorage();
+}
+
+/**
+ * Remove the page image for a specific page
+ */
+export function removePageImage(juz: number, pageIndex: number): void {
+  if (!db) return;
+
+  db.run(
+    `UPDATE page_mappings SET page_image = NULL WHERE juz = ${juz} AND page_index = ${pageIndex}`
+  );
+
+  saveToStorage();
 }
 
 /**
