@@ -59,6 +59,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ surahs, onMappingsChange
   const [expandedPage, setExpandedPage] = useState<number | null>(null);
   const [showOnlyCustom, setShowOnlyCustom] = useState(false);
   const [uploadingImage, setUploadingImage] = useState<number | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<{ pageIndex: number; percent: number; phase: 'reading' | 'saving' } | null>(null);
 
   // Build a global ayah lookup
   const allAyahs = useMemo(() => {
@@ -192,29 +193,62 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ surahs, onMappingsChange
       showToast('Image must be less than 5MB', 'error');
       return;
     }
+
     setUploadingImage(mapping.pageIndex);
+    setUploadProgress({ pageIndex: mapping.pageIndex, percent: 0, phase: 'reading' });
+
     const reader = new FileReader();
+
+    reader.onprogress = (e) => {
+      if (e.lengthComputable) {
+        const pct = Math.min(80, Math.round((e.loaded / e.total) * 80));
+        setUploadProgress({ pageIndex: mapping.pageIndex, percent: pct, phase: 'reading' });
+      }
+    };
+
     reader.onload = () => {
       const base64 = reader.result as string;
-      updatePageImage(mapping.juz, mapping.pageIndex, base64);
-      loadMappings();
-      onMappingsChanged();
-      setUploadingImage(null);
-      showToast(`Image uploaded for page ${mapping.displayPage}`, 'success');
+      // Show saving phase — use setTimeout so React can paint before heavy DB work
+      setUploadProgress({ pageIndex: mapping.pageIndex, percent: 85, phase: 'saving' });
+
+      setTimeout(() => {
+        try {
+          updatePageImage(mapping.juz, mapping.pageIndex, base64);
+          showToast(`Image uploaded for page ${mapping.displayPage}`, 'success');
+        } catch (err) {
+          console.error('Failed to save image:', err);
+          showToast('Failed to save image to database', 'error');
+        } finally {
+          // Always clear upload state and refresh, even if save threw
+          setUploadingImage(null);
+          setUploadProgress(null);
+          loadMappings();
+          onMappingsChanged();
+        }
+      }, 50);
     };
+
     reader.onerror = () => {
       setUploadingImage(null);
+      setUploadProgress(null);
       showToast('Failed to read image file', 'error');
     };
+
     reader.readAsDataURL(file);
   };
 
   const handleRemoveImage = (mapping: PageMapping) => {
     if (!window.confirm(`Remove image for page ${mapping.displayPage}?`)) return;
-    removePageImage(mapping.juz, mapping.pageIndex);
+    try {
+      removePageImage(mapping.juz, mapping.pageIndex);
+      showToast(`Image removed for page ${mapping.displayPage}`, 'success');
+    } catch (err) {
+      console.error('Failed to remove image:', err);
+      showToast('Failed to remove image', 'error');
+    }
+    // Reload mappings from DB so UI reflects removal immediately
     loadMappings();
     onMappingsChanged();
-    showToast(`Image removed for page ${mapping.displayPage}`, 'success');
   };
 
   // Check for duplicate display page numbers
@@ -481,9 +515,27 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ surahs, onMappingsChange
                             </div>
                           ) : (
                             <label className={`admin-image-upload-area ${uploadingImage === mapping.pageIndex ? 'uploading' : ''}`}>
-                              <Upload size={20} />
-                              <span>{uploadingImage === mapping.pageIndex ? 'Uploading...' : 'Click to upload page image'}</span>
-                              <span className="admin-image-hint">PNG, JPG up to 5MB</span>
+                              {uploadingImage === mapping.pageIndex ? (
+                                <>
+                                  <Upload size={20} className="admin-upload-spin" />
+                                  <span>
+                                    {uploadProgress?.phase === 'saving' ? 'Saving to database...' : 'Reading image...'}
+                                    {' '}<strong>{uploadProgress?.percent ?? 0}%</strong>
+                                  </span>
+                                  <div className="admin-upload-progress-bar">
+                                    <div
+                                      className="admin-upload-progress-fill"
+                                      style={{ width: `${uploadProgress?.percent ?? 0}%` }}
+                                    />
+                                  </div>
+                                </>
+                              ) : (
+                                <>
+                                  <Upload size={20} />
+                                  <span>Click to upload page image</span>
+                                  <span className="admin-image-hint">PNG, JPG up to 5MB</span>
+                                </>
+                              )}
                               <input
                                 type="file"
                                 accept="image/*"
@@ -594,8 +646,23 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ surahs, onMappingsChange
                             </div>
                           ) : (
                             <label className={`admin-image-upload-area small ${uploadingImage === mapping.pageIndex ? 'uploading' : ''}`}>
-                              <Upload size={16} />
-                              <span>{uploadingImage === mapping.pageIndex ? 'Uploading...' : 'Upload image'}</span>
+                              <Upload size={16} className={uploadingImage === mapping.pageIndex ? 'admin-upload-spin' : ''} />
+                              {uploadingImage === mapping.pageIndex ? (
+                                <>
+                                  <span>
+                                    {uploadProgress?.phase === 'saving' ? 'Saving...' : 'Reading...'}
+                                    {' '}<strong>{uploadProgress?.percent ?? 0}%</strong>
+                                  </span>
+                                  <div className="admin-upload-progress-bar">
+                                    <div
+                                      className="admin-upload-progress-fill"
+                                      style={{ width: `${uploadProgress?.percent ?? 0}%` }}
+                                    />
+                                  </div>
+                                </>
+                              ) : (
+                                <span>Upload image</span>
+                              )}
                               <input
                                 type="file"
                                 accept="image/*"

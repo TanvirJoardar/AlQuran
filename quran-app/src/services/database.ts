@@ -22,7 +22,14 @@ let initPromise: Promise<Database> | null = null;
 function saveToStorage() {
   if (!db) return;
   const data = db.export();
-  const base64 = btoa(String.fromCharCode(...data));
+  // Convert Uint8Array to binary string in chunks to avoid stack overflow
+  // (spread syntax on large arrays exceeds max call stack size)
+  const CHUNK_SIZE = 8192;
+  const chunks: string[] = [];
+  for (let i = 0; i < data.length; i += CHUNK_SIZE) {
+    chunks.push(String.fromCharCode.apply(null, Array.from(data.subarray(i, i + CHUNK_SIZE))));
+  }
+  const base64 = btoa(chunks.join(''));
   localStorage.setItem(DB_STORAGE_KEY, base64);
 }
 
