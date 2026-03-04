@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { Ayah } from '../types/quran';
 import { formatTime } from '../utils/helpers';
 import {
@@ -9,6 +9,9 @@ import {
   Square,
   Loader,
   Volume2,
+  Volume1,
+  VolumeX,
+  BookMarked,
 } from 'lucide-react';
 
 interface AudioPlayerBarProps {
@@ -18,11 +21,14 @@ interface AudioPlayerBarProps {
   duration: number;
   isLoading: boolean;
   surahName?: string;
+  volume?: number;
   onTogglePlay: () => void;
   onStop: () => void;
   onSeek: (time: number) => void;
   onPrevious: () => void;
   onNext: () => void;
+  onGoToPage?: () => void;
+  onVolumeChange?: (vol: number) => void;
 }
 
 export const AudioPlayerBar: React.FC<AudioPlayerBarProps> = ({
@@ -32,15 +38,33 @@ export const AudioPlayerBar: React.FC<AudioPlayerBarProps> = ({
   duration,
   isLoading,
   surahName,
+  volume = 1,
   onTogglePlay,
   onStop,
   onSeek,
   onPrevious,
   onNext,
+  onGoToPage,
+  onVolumeChange,
 }) => {
+  const [showVolume, setShowVolume] = useState(false);
+  const [prevVolume, setPrevVolume] = useState(1);
+
   if (!currentAyah) return null;
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+
+  const VolumeIcon = volume === 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2;
+
+  const handleToggleMute = () => {
+    if (!onVolumeChange) return;
+    if (volume > 0) {
+      setPrevVolume(volume);
+      onVolumeChange(0);
+    } else {
+      onVolumeChange(prevVolume || 1);
+    }
+  };
 
   return (
     <div className="audio-player-bar">
@@ -61,7 +85,35 @@ export const AudioPlayerBar: React.FC<AudioPlayerBarProps> = ({
 
       <div className="player-content">
         <div className="player-info">
-          <Volume2 size={18} className="player-icon" />
+          <div
+            className="player-volume-wrap"
+            onMouseEnter={() => setShowVolume(true)}
+            onMouseLeave={() => setShowVolume(false)}
+          >
+            <button
+              className="player-btn player-volume-btn"
+              onClick={handleToggleMute}
+              title={volume === 0 ? 'Unmute' : 'Mute'}
+            >
+              <VolumeIcon size={18} />
+            </button>
+            {showVolume && onVolumeChange && (
+              <div
+                className="player-volume-slider-wrap"
+              >
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.02}
+                  value={volume}
+                  onChange={e => onVolumeChange(Number(e.target.value))}
+                  className="player-volume-slider"
+                />
+                <span className="player-volume-pct">{Math.round(volume * 100)}%</span>
+              </div>
+            )}
+          </div>
           <div className="player-text">
             <span className="player-surah-name">{surahName}</span>
             <span className="player-ayah-info">
@@ -69,6 +121,12 @@ export const AudioPlayerBar: React.FC<AudioPlayerBarProps> = ({
             </span>
           </div>
         </div>
+
+        {onGoToPage && (
+          <button className="player-btn player-btn-goto" onClick={onGoToPage} title="Go to page in Hafezi Quran">
+            <BookMarked size={16} />
+          </button>
+        )}
 
         <div className="player-controls">
           <button className="player-btn" onClick={onPrevious} title="Previous Ayah">

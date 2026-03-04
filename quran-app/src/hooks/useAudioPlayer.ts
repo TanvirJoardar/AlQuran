@@ -7,6 +7,7 @@ interface AudioPlayerState {
   currentTime: number;
   duration: number;
   isLoading: boolean;
+  volume: number;
 }
 
 export function useAudioPlayer() {
@@ -22,7 +23,10 @@ export function useAudioPlayer() {
     currentTime: 0,
     duration: 0,
     isLoading: false,
+    volume: 1,
   });
+
+  const volumeRef = useRef(1);
 
   const ayahsRef         = useRef<Ayah[]>([]);
   const autoPlayNextRef  = useRef(false);
@@ -83,6 +87,7 @@ export function useAudioPlayer() {
   useEffect(() => {
     const bufs: [HTMLAudioElement, HTMLAudioElement] = [new Audio(), new Audio()];
     bufsRef.current = bufs;
+    bufs.forEach(a => { a.volume = volumeRef.current; });
 
     bufs.forEach((audio, bufIdx) => {
 
@@ -217,6 +222,13 @@ export function useAudioPlayer() {
     onPlaylistEndRef.current = cb;
   }, []);
 
+  const setVolume = useCallback((vol: number) => {
+    const clamped = Math.max(0, Math.min(1, vol));
+    volumeRef.current = clamped;
+    bufsRef.current?.forEach(a => { a.volume = clamped; });
+    setState(prev => ({ ...prev, volume: clamped }));
+  }, []);
+
   return {
     ...state,
     playAyah,
@@ -228,5 +240,6 @@ export function useAudioPlayer() {
     playSurah,
     setRepeatMode,
     setOnPlaylistEnd,
+    setVolume,
   };
 }

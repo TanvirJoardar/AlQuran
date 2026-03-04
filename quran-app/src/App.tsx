@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import type { QuranData, Surah } from './types/quran';
+import type { QuranData, Surah, Ayah } from './types/quran';
 import { SurahList } from './components/SurahList';
 import { SurahView } from './components/SurahView';
 import { AudioPlayerBar } from './components/AudioPlayerBar';
@@ -23,8 +23,16 @@ function App() {
   const [viewMode, setViewMode] = useState<ViewMode>('surah');
   const [mappingsVersion, setMappingsVersion] = useState(0);
   const [dbReady, setDbReady] = useState(false);
+  const [hafeziJumpAyah, setHafeziJumpAyah] = useState<Ayah | null>(null);
 
   const player = useAudioPlayer();
+
+  const handleSetViewMode = useCallback((mode: ViewMode) => {
+    if (mode === 'hafezi') {
+      setHafeziJumpAyah(player.currentAyah);
+    }
+    setViewMode(mode);
+  }, [player.currentAyah]);
 
   // Derive the surah name from whichever ayah is currently playing,
   // so it updates correctly across all views (Surah, Hafezi, Recitation).
@@ -152,28 +160,28 @@ function App() {
         <div className="header-tabs">
           <button
             className={`header-tab ${viewMode === 'surah' ? 'active' : ''}`}
-            onClick={() => setViewMode('surah')}
+            onClick={() => handleSetViewMode('surah')}
           >
             <LayoutGrid size={16} />
             <span>Surah View</span>
           </button>
           <button
             className={`header-tab ${viewMode === 'hafezi' ? 'active' : ''}`}
-            onClick={() => setViewMode('hafezi')}
+            onClick={() => handleSetViewMode('hafezi')}
           >
             <BookMarked size={16} />
             <span>Hafezi Quran</span>
           </button>
           <button
             className={`header-tab ${viewMode === 'recitation' ? 'active' : ''}`}
-            onClick={() => setViewMode('recitation')}
+            onClick={() => handleSetViewMode('recitation')}
           >
             <Headphones size={16} />
             <span>Recitation</span>
           </button>
           <button
             className={`header-tab ${viewMode === 'admin' ? 'active' : ''}`}
-            onClick={() => setViewMode('admin')}
+            onClick={() => handleSetViewMode('admin')}
           >
             <Settings size={16} />
             <span>Admin</span>
@@ -242,6 +250,7 @@ function App() {
               onSetAutoPlayNext={player.setAutoPlayNext}
               onStop={player.stop}
               mappingsVersion={mappingsVersion}
+              jumpToAyah={hafeziJumpAyah}
             />
           ) : viewMode === 'recitation' ? (
             <RecitationPanel
@@ -274,11 +283,14 @@ function App() {
         duration={player.duration}
         isLoading={player.isLoading}
         surahName={currentSurahName}
+        volume={player.volume}
         onTogglePlay={player.togglePlay}
         onStop={player.stop}
         onSeek={player.seek}
         onPrevious={handlePreviousAyah}
         onNext={handleNextAyah}
+        onGoToPage={player.currentAyah ? () => handleSetViewMode('hafezi') : undefined}
+        onVolumeChange={player.setVolume}
       />
     </div>
   );

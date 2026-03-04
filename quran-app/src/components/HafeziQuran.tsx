@@ -43,6 +43,7 @@ interface HafeziQuranProps {
   onSetAutoPlayNext: (value: boolean) => void;
   onStop: () => void;
   mappingsVersion?: number;
+  jumpToAyah?: Ayah | null;
 }
 
 // Arabic Juz names
@@ -71,6 +72,7 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
   onSetAutoPlayNext,
   onStop,
   mappingsVersion,
+  jumpToAyah,
 }) => {
   const [selectedJuz, setSelectedJuz] = useState(1);
   const [selectedDisplayPage, setSelectedDisplayPage] = useState(0);
@@ -165,6 +167,20 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
     return result;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [surahs, allAyahs, mappingsVersion]);
+
+  // Navigate to juz+page when jumpToAyah prop is set (e.g. when switching tabs)
+  useEffect(() => {
+    if (!jumpToAyah || juzData.length === 0) return;
+    for (const juz of juzData) {
+      for (const page of juz.pages) {
+        if (page.ayahs.some(a => a.number === jumpToAyah.number)) {
+          setSelectedJuz(juz.juzNumber);
+          setSelectedDisplayPage(page.displayPage);
+          return;
+        }
+      }
+    }
+  }, [jumpToAyah, juzData]);
 
   const currentJuz = juzData.find(j => j.juzNumber === selectedJuz)!;
 
