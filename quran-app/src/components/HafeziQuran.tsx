@@ -135,32 +135,26 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
     }
 
     // Apply custom mappings per juz
+    // We use customMappings as the authoritative ordered list so that
+    // admin-added and admin-deleted pages are fully reflected.
     const result: JuzData[] = [];
     for (let j = 1; j <= 30; j++) {
       const origPages = juzMap.get(j)!;
       const customMappings = getPageMappings(j);
 
       if (customMappings.length > 0) {
-        const customPages: PageData[] = origPages.map((page, idx) => {
-          const mapping = customMappings.find(m => m.pageIndex === idx);
-          if (mapping) {
-            const dp = mapping.displayPage;
-            const img = mapping.pageImage || null;
-            if (mapping.isCustom) {
-              const customAyahs = allAyahs.filter(
-                a => a.number >= mapping.customStartAyah && a.number <= mapping.customEndAyah
-              );
-              return {
-                pageNumber: page.pageNumber,
-                displayPage: dp,
-                pageIndex: idx,
-                ayahs: customAyahs,
-                pageImage: img,
-              };
-            }
-            return { ...page, displayPage: dp, pageIndex: idx, pageImage: img };
-          }
-          return page;
+        // Build pages directly from DB rows (handles adds, deletes, reorders)
+        const customPages: PageData[] = customMappings.map(mapping => {
+          const ayahs = allAyahs.filter(
+            a => a.number >= mapping.customStartAyah && a.number <= mapping.customEndAyah
+          );
+          return {
+            pageNumber: mapping.originalPage,
+            displayPage: mapping.displayPage,
+            pageIndex: mapping.pageIndex,
+            ayahs,
+            pageImage: mapping.pageImage || null,
+          };
         });
         result.push({ juzNumber: j, pages: customPages });
       } else {

@@ -10,6 +10,8 @@ import {
   updatePageImage,
   removePageImage,
   renumberSubsequentPages,
+  addPageAfter,
+  deletePage,
   type PageMapping,
 } from '../services/database';
 import {
@@ -27,6 +29,7 @@ import {
   Upload,
   Image,
   X,
+  PlusCircle,
 } from 'lucide-react';
 
 interface AdminPanelProps {
@@ -61,6 +64,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ surahs, onMappingsChange
   const [showOnlyCustom, setShowOnlyCustom] = useState(false);
   const [uploadingImage, setUploadingImage] = useState<number | null>(null);
   const [uploadProgress, setUploadProgress] = useState<{ pageIndex: number; percent: number; phase: 'reading' | 'saving' } | null>(null);
+
+  // Add-page form state
+  const [addingAfterIndex, setAddingAfterIndex] = useState<number | null>(null);
+  const [newPageStart, setNewPageStart] = useState(1);
+  const [newPageEnd, setNewPageEnd] = useState(1);
+  const [newPageDisplay, setNewPageDisplay] = useState(1);
 
   // Build a global ayah lookup
   const allAyahs = useMemo(() => {
@@ -239,6 +248,56 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ surahs, onMappingsChange
     reader.readAsDataURL(file);
   };
 
+  const handleStartAdd = (afterMapping: PageMapping) => {
+    setAddingAfterIndex(afterMapping.pageIndex);
+    setEditingPage(null);
+    setExpandedPage(null);
+    setNewPageDisplay(afterMapping.displayPage + 1);
+    setNewPageStart(afterMapping.customEndAyah);
+    setNewPageEnd(afterMapping.customEndAyah);
+  };
+
+  const handleCancelAdd = () => setAddingAfterIndex(null);
+
+  const handleConfirmAdd = () => {
+    if (addingAfterIndex === null) return;
+    if (newPageStart < 1 || newPageEnd < 1) {
+      showToast('Ayah numbers must be at least 1', 'error');
+      return;
+    }
+    if (newPageStart > newPageEnd) {
+      showToast('Start ayah must be ≤ end ayah', 'error');
+      return;
+    }
+    if (newPageEnd > totalAyahs) {
+      showToast(`End ayah cannot exceed ${totalAyahs}`, 'error');
+      return;
+    }
+    if (newPageDisplay < 1) {
+      showToast('Display page must be at least 1', 'error');
+      return;
+    }
+    addPageAfter(selectedJuz, addingAfterIndex, newPageStart, newPageEnd, newPageDisplay);
+    // Renumber everything after the newly inserted page
+    renumberSubsequentPages(selectedJuz, addingAfterIndex + 1, newPageDisplay);
+    setAddingAfterIndex(null);
+    loadMappings();
+    onMappingsChanged();
+    showToast('Page added successfully!', 'success');
+  };
+
+  const handleDeletePage = (mapping: PageMapping) => {
+    const kind = mapping.originalPage === 0 ? 'custom-added' : 'original';
+    if (!window.confirm(`Delete this ${kind} page (display #${mapping.displayPage})? This cannot be undone.`)) return;
+    const delDisplay = mapping.displayPage;
+    deletePage(selectedJuz, mapping.pageIndex);
+    // Renumber subsequent pages starting from the deleted display number
+    renumberSubsequentPages(selectedJuz, mapping.pageIndex - 1, delDisplay - 1);
+    loadMappings();
+    onMappingsChanged();
+    showToast(`Page #${delDisplay} deleted`, 'success');
+  };
+
   const handleRemoveImage = (mapping: PageMapping) => {
     if (!window.confirm(`Remove image for page ${mapping.displayPage}?`)) return;
     try {
@@ -370,11 +429,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ surahs, onMappingsChange
             const isEditing = editingPage === mapping.pageIndex;
             const isExpanded = expandedPage === mapping.pageIndex;
             const isDuplicate = duplicateDisplayPages.has(mapping.displayPage);
+            const isAddingAfter = addingAfterIndex === mapping.pageIndex;
 
             return (
+              <React.Fragment key={mapping.id}>
               <div
-                key={mapping.id}
-                className={`admin-page-row ${mapping.isCustom ? 'custom' : ''} ${isEditing ? 'editing' : ''}`}
+                className={`admin-page-row ${mapping.isCustom ? 'custom' : ''} ${mapping.originalPage === 0 ? 'added' : ''} ${isEditing ? 'editing' : ''}`}
               >
                 {/* Main row */}
                 <div className="admin-page-row-main" onClick={() => setExpandedPage(isExpanded ? null : mapping.pageIndex)}>
@@ -420,6 +480,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ surahs, onMappingsChange
                       </button>
                     )}
                     <button
+                      className="admin-row-btn admin-row-btn-add"
+                      onClick={e => { e.stopPropagation(); isAddingAfter ? handleCancelAdd() : handleStartAdd(mapping); }}
+                      title={isAddingAfter ? 'Cancel add' : 'Add page after this'}
+                    >
+                      <PlusCircle size={14} />
+                    </button>
+                    <button
+                      className="admin-row-btn admin-row-btn-del"
+                      onClick={e => { e.stopPropagation(); handleDeletePage(mapping); }}
+                      title="Delete this page"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                    <button
                       className="admin-row-btn admin-row-btn-expand"
                       onClick={e => { e.stopPropagation(); setExpandedPage(isExpanded ? null : mapping.pageIndex); }}
                     >
@@ -427,6 +501,73 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ surahs, onMappingsChange
                     </button>
                   </span>
                 </div>
+
+                {/* Add-page inline form */}
+                {isAddingAfter && (
+                  <div className="admin-page-expanded admin-add-expanded">
+                    <div className="admin-add-form">
+                      <h4><PlusCircle size={14} style={{ marginRight: 6 }} />Insert New Page — after index {mapping.pageIndex} (Para {selectedJuz})</h4>
+                      <div className="admin-edit-fields">
+                        <div className="admin-edit-field">
+                          <label>Display Page #</label>
+                          <input
+                            type="number"
+                            min={1}
+                            value={newPageDisplay}
+                            onChange={e => setNewPageDisplay(Number(e.target.value))}
+                            className="admin-input"
+                          />
+                          <span className="admin-edit-hint">Suggested: {mapping.displayPage + 1}</span>
+                        </div>
+                        <div className="admin-edit-field">
+                          <label>Start Ayah (Global #)</label>
+                          <input
+                            type="number"
+                            min={1}
+                            max={totalAyahs}
+                            value={newPageStart}
+                            onChange={e => setNewPageStart(Number(e.target.value))}
+                            className="admin-input"
+                          />
+                          {getAyahInfo(newPageStart) && (
+                            <span className="admin-edit-hint">
+                              {getAyahInfo(newPageStart)!.surahName} — Ayah {getAyahInfo(newPageStart)!.numberInSurah}
+                            </span>
+                          )}
+                        </div>
+                        <div className="admin-edit-field">
+                          <label>End Ayah (Global #)</label>
+                          <input
+                            type="number"
+                            min={1}
+                            max={totalAyahs}
+                            value={newPageEnd}
+                            onChange={e => setNewPageEnd(Number(e.target.value))}
+                            className="admin-input"
+                          />
+                          {getAyahInfo(newPageEnd) && (
+                            <span className="admin-edit-hint">
+                              {getAyahInfo(newPageEnd)!.surahName} — Ayah {getAyahInfo(newPageEnd)!.numberInSurah}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="admin-edit-preview">
+                        <Eye size={14} />
+                        <span>Preview: Page {newPageDisplay} — {getAyahRangePreview(newPageStart, newPageEnd)}</span>
+                      </div>
+                      <div className="admin-edit-actions">
+                        <button className="admin-btn admin-btn-add" onClick={handleConfirmAdd}>
+                          <PlusCircle size={14} />
+                          <span>Add Page</span>
+                        </button>
+                        <button className="admin-btn admin-btn-outline" onClick={handleCancelAdd}>
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Expanded / Edit section */}
                 {(isExpanded || isEditing) && (
@@ -684,8 +825,26 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ surahs, onMappingsChange
                   </div>
                 )}
               </div>
+              </React.Fragment>
             );
           })
+        )}
+
+        {/* Add page at the end of this para */}
+        {mappings.length > 0 && (
+          <div className="admin-add-end-wrap">
+            {addingAfterIndex === mappings[mappings.length - 1].pageIndex ? (
+              <span className="admin-add-end-hint">↑ Fill in the form above to add the page</span>
+            ) : (
+              <button
+                className="admin-btn admin-btn-add admin-btn-add-end"
+                onClick={() => handleStartAdd(mappings[mappings.length - 1])}
+              >
+                <PlusCircle size={14} />
+                <span>Add Page at End of Para {selectedJuz}</span>
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>

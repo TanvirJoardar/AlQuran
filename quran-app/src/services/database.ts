@@ -375,6 +375,73 @@ export function renumberSubsequentPages(
 }
 
 /**
+ * Insert a new page after `afterPageIndex` (pass -1 to insert at the very start).
+ * Shifts all subsequent page_index values up by 1 using a temp offset to avoid UNIQUE conflicts.
+ */
+export function addPageAfter(
+  juz: number,
+  afterPageIndex: number,
+  startAyah: number,
+  endAyah: number,
+  displayPage: number
+): void {
+  if (!db) return;
+
+  const newPageIndex = afterPageIndex + 1;
+  const OFFSET = 100000;
+
+  // Step 1: Bump every row at or above the insertion point to temp space
+  db.run(
+    `UPDATE page_mappings SET page_index = page_index + ${OFFSET}
+     WHERE juz = ${juz} AND page_index >= ${newPageIndex}`
+  );
+
+  // Step 2: Bring them back shifted by +1 from their original position
+  db.run(
+    `UPDATE page_mappings SET page_index = page_index - ${OFFSET} + 1
+     WHERE juz = ${juz} AND page_index >= ${OFFSET + newPageIndex}`
+  );
+
+  // Step 3: Insert the new page (originalPage = 0 signals a user-added page)
+  const stmt = db.prepare(
+    `INSERT INTO page_mappings
+     (juz, page_index, original_page, display_page, start_ayah, end_ayah,
+      custom_start_ayah, custom_end_ayah, is_custom)
+     VALUES (?, ?, 0, ?, ?, ?, ?, ?, 1)`
+  );
+  stmt.run([juz, newPageIndex, displayPage, startAyah, endAyah, startAyah, endAyah]);
+  stmt.free();
+
+  saveToStorage();
+}
+
+/**
+ * Delete a page and shift all subsequent page_index values down by 1.
+ */
+export function deletePage(juz: number, pageIndex: number): void {
+  if (!db) return;
+
+  const OFFSET = 100000;
+
+  // Delete the target row first
+  db.run(`DELETE FROM page_mappings WHERE juz = ${juz} AND page_index = ${pageIndex}`);
+
+  // Bump subsequent rows to temp space (page_index - 1 relative to original)
+  db.run(
+    `UPDATE page_mappings SET page_index = page_index + ${OFFSET} - 1
+     WHERE juz = ${juz} AND page_index > ${pageIndex}`
+  );
+
+  // Bring them back (removes the OFFSET)
+  db.run(
+    `UPDATE page_mappings SET page_index = page_index - ${OFFSET}
+     WHERE juz = ${juz} AND page_index >= ${OFFSET}`
+  );
+
+  saveToStorage();
+}
+
+/**
  * Export the database as a downloadable file
  */
 export function exportDatabase(): Uint8Array | null {
