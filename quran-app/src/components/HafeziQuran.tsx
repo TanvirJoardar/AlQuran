@@ -65,6 +65,7 @@ interface HafeziQuranProps {
   onPrevious: () => void;
   onNext: () => void;
   onVolumeChange: (vol: number) => void;
+  sidebarOpen?: boolean;
 }
 
 // Arabic Juz names
@@ -123,6 +124,7 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
   onPrevious,
   onNext,
   onVolumeChange,
+  sidebarOpen = true,
 }) => {
   const [selectedJuz, setSelectedJuz] = useState(1);
   const [selectedDisplayPage, setSelectedDisplayPage] = useState(0);
@@ -357,7 +359,7 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
   return (
     <div className="hafezi-quran">
       {/* ---- Left Control Panel ---- */}
-      <div className="hafezi-sidebar">
+      <div className={`hafezi-sidebar${sidebarOpen ? '' : ' collapsed'}`}>
         {/* Brand / Title */}
         <div className="hafezi-sidebar-header">
           <BookOpen size={20} className="hafezi-controls-icon" />

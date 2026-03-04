@@ -1157,6 +1157,14 @@ body {
   overflow-y: auto;
   padding: 0;
   flex-shrink: 0;
+  transition: width 0.25s ease, min-width 0.25s ease;
+}
+
+.hafezi-sidebar.collapsed {
+  width: 0;
+  min-width: 0;
+  overflow: hidden;
+  border-right: none;
 }
 
 .hafezi-sidebar-header {
@@ -1941,23 +1949,20 @@ body {
     font-size: 0.78rem;
   }
 
-  /* Player becomes a bottom bar on tablets */
+  /* Player stays in sidebar as a full-width second row */
   .hafezi-player {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    z-index: 200;
+    width: 100%;
+    flex-basis: 100%;
     border-top: 1px solid var(--border);
     border-radius: 0;
     padding: 8px 16px 10px;
-    background: rgba(255, 253, 247, 0.97);
-    backdrop-filter: blur(12px);
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.06);
     flex-direction: row;
     flex-wrap: wrap;
     align-items: center;
     gap: 8px;
+    margin: 0 -12px;
+    padding-left: 12px;
+    padding-right: 12px;
   }
 
   .hafezi-player-info {
@@ -1980,7 +1985,6 @@ body {
 
   .hafezi-page-area {
     padding: 12px 8px;
-    padding-bottom: 100px;
   }
 
   .hafezi-page-wrapper.dual {

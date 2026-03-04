@@ -251,6 +251,7 @@ function App() {
               onStop={player.stop}
               mappingsVersion={mappingsVersion}
               jumpToAyah={hafeziJumpAyah}
+              sidebarOpen={sidebarOpen}
               currentTime={player.currentTime}
               duration={player.duration}
               volume={player.volume}
