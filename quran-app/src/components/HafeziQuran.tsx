@@ -1,7 +1,7 @@
-import React, { useMemo, useState, useEffect, useRef } from 'react';
-import type { Surah, Ayah } from '../types/quran';
-import { toArabicNumber, formatTime } from '../utils/helpers';
-import { getPageMappings } from '../services/database';
+import React, { useMemo, useState, useEffect, useRef } from "react";
+import type { Surah, Ayah } from "../types/quran";
+import { toArabicNumber, formatTime } from "../utils/helpers";
+import { getPageMappings } from "../services/database";
 import {
   Play,
   Pause,
@@ -21,14 +21,18 @@ import {
   Volume1,
   VolumeX,
   BookMarked,
-} from 'lucide-react';
+} from "lucide-react";
 
-type EnrichedAyah = Ayah & { surahNumber: number; surahName: string; surahArabicName: string };
+type EnrichedAyah = Ayah & {
+  surahNumber: number;
+  surahName: string;
+  surahArabicName: string;
+};
 
 interface PageData {
-  pageNumber: number;       // original quran page number
-  displayPage: number;      // user-editable display page (1-based)
-  pageIndex: number;        // immutable 0-based index within juz
+  pageNumber: number; // original quran page number
+  displayPage: number; // user-editable display page (1-based)
+  pageIndex: number; // immutable 0-based index within juz
   ayahs: EnrichedAyah[];
   pageImage: string | null; // base64-encoded page image
 }
@@ -65,16 +69,36 @@ interface HafeziQuranProps {
 
 // Arabic Juz names
 const juzNames: Record<number, string> = {
-  1: 'الم', 2: 'سَيَقُولُ', 3: 'تِلْكَ الرُّسُلُ', 4: 'لَنْ تَنَالُوا',
-  5: 'وَالْمُحْصَنَاتُ', 6: 'لَا يُحِبُّ اللَّهُ', 7: 'وَإِذَا سَمِعُوا',
-  8: 'وَلَوْ أَنَّنَا', 9: 'قَالَ الْمَلَأُ', 10: 'وَاعْلَمُوا',
-  11: 'يَعْتَذِرُونَ', 12: 'وَمَا مِنْ دَابَّةٍ', 13: 'وَمَا أُبَرِّئُ',
-  14: 'رُبَمَا', 15: 'سُبْحَانَ الَّذِي', 16: 'قَالَ أَلَمْ',
-  17: 'اقْتَرَبَ', 18: 'قَدْ أَفْلَحَ', 19: 'وَقَالَ الَّذِينَ',
-  20: 'أَمَّنْ خَلَقَ', 21: 'اتْلُ مَا أُوحِيَ', 22: 'وَمَنْ يَقْنُتْ',
-  23: 'وَمَا لِيَ', 24: 'فَمَنْ أَظْلَمُ', 25: 'إِلَيْهِ يُرَدُّ',
-  26: 'حم', 27: 'قَالَ فَمَا خَطْبُكُمْ', 28: 'قَدْ سَمِعَ اللَّهُ',
-  29: 'تَبَارَكَ الَّذِي', 30: 'عَمَّ',
+  1: "الم",
+  2: "سَيَقُولُ",
+  3: "تِلْكَ الرُّسُلُ",
+  4: "لَنْ تَنَالُوا",
+  5: "وَالْمُحْصَنَاتُ",
+  6: "لَا يُحِبُّ اللَّهُ",
+  7: "وَإِذَا سَمِعُوا",
+  8: "وَلَوْ أَنَّنَا",
+  9: "قَالَ الْمَلَأُ",
+  10: "وَاعْلَمُوا",
+  11: "يَعْتَذِرُونَ",
+  12: "وَمَا مِنْ دَابَّةٍ",
+  13: "وَمَا أُبَرِّئُ",
+  14: "رُبَمَا",
+  15: "سُبْحَانَ الَّذِي",
+  16: "قَالَ أَلَمْ",
+  17: "اقْتَرَبَ",
+  18: "قَدْ أَفْلَحَ",
+  19: "وَقَالَ الَّذِينَ",
+  20: "أَمَّنْ خَلَقَ",
+  21: "اتْلُ مَا أُوحِيَ",
+  22: "وَمَنْ يَقْنُتْ",
+  23: "وَمَا لِيَ",
+  24: "فَمَنْ أَظْلَمُ",
+  25: "إِلَيْهِ يُرَدُّ",
+  26: "حم",
+  27: "قَالَ فَمَا خَطْبُكُمْ",
+  28: "قَدْ سَمِعَ اللَّهُ",
+  29: "تَبَارَكَ الَّذِي",
+  30: "عَمَّ",
 };
 
 export const HafeziQuran: React.FC<HafeziQuranProps> = ({
@@ -104,7 +128,7 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
   const [selectedDisplayPage, setSelectedDisplayPage] = useState(0);
   const [repeatOn, setRepeatOn] = useState(false);
   const [isPagePlaying, setIsPagePlaying] = useState(false);
-  const [viewMode, setViewMode] = useState<'text' | 'image'>('text');
+  const [viewMode, setViewMode] = useState<"text" | "image">("text");
   const [prevVolume, setPrevVolume] = useState(1);
   const pageContentRef = useRef<HTMLDivElement>(null);
 
@@ -123,8 +147,8 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
   // Build all enriched ayahs once
   const allAyahs = useMemo<EnrichedAyah[]>(() => {
     const result: EnrichedAyah[] = [];
-    surahs.forEach(s => {
-      s.ayahs.forEach(a => {
+    surahs.forEach((s) => {
+      s.ayahs.forEach((a) => {
         result.push({
           ...a,
           surahNumber: s.number,
@@ -140,7 +164,7 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
   const juzData = useMemo<JuzData[]>(() => {
     // Group by page (original)
     const pageMap = new Map<number, EnrichedAyah[]>();
-    allAyahs.forEach(a => {
+    allAyahs.forEach((a) => {
       if (!pageMap.has(a.page)) pageMap.set(a.page, []);
       pageMap.get(a.page)!.push(a);
     });
@@ -151,14 +175,14 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
       juzMap.set(j, []);
     }
 
-    allAyahs.forEach(a => {
+    allAyahs.forEach((a) => {
       const juz = a.juz;
       const pages = juzMap.get(juz)!;
-      if (!pages.find(p => p.pageNumber === a.page)) {
+      if (!pages.find((p) => p.pageNumber === a.page)) {
         pages.push({
           pageNumber: a.page,
-          displayPage: 0,  // will be set below
-          pageIndex: 0,    // will be set below
+          displayPage: 0, // will be set below
+          pageIndex: 0, // will be set below
           ayahs: pageMap.get(a.page)!,
           pageImage: null,
         });
@@ -185,9 +209,11 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
 
       if (customMappings.length > 0) {
         // Build pages directly from DB rows (handles adds, deletes, reorders)
-        const customPages: PageData[] = customMappings.map(mapping => {
+        const customPages: PageData[] = customMappings.map((mapping) => {
           const ayahs = allAyahs.filter(
-            a => a.number >= mapping.customStartAyah && a.number <= mapping.customEndAyah
+            (a) =>
+              a.number >= mapping.customStartAyah &&
+              a.number <= mapping.customEndAyah,
           );
           return {
             pageNumber: mapping.originalPage,
@@ -212,7 +238,7 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
     if (!jumpToAyah || juzData.length === 0) return;
     for (const juz of juzData) {
       for (const page of juz.pages) {
-        if (page.ayahs.some(a => a.number === jumpToAyah.number)) {
+        if (page.ayahs.some((a) => a.number === jumpToAyah.number)) {
           setSelectedJuz(juz.juzNumber);
           setSelectedDisplayPage(page.displayPage);
           return;
@@ -221,24 +247,26 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
     }
   }, [jumpToAyah, juzData]);
 
-  const currentJuz = juzData.find(j => j.juzNumber === selectedJuz)!;
+  const currentJuz = juzData.find((j) => j.juzNumber === selectedJuz)!;
 
   // Get unique display page numbers sorted
   const uniqueDisplayPages = useMemo(() => {
     if (!currentJuz) return [];
-    const set = new Set(currentJuz.pages.map(p => p.displayPage));
+    const set = new Set(currentJuz.pages.map((p) => p.displayPage));
     return Array.from(set).sort((a, b) => a - b);
   }, [currentJuz]);
 
   // Find all pages matching the selected display page (1 or more for side-by-side)
   const currentPages = useMemo(() => {
     if (!currentJuz) return [];
-    return currentJuz.pages.filter(p => p.displayPage === selectedDisplayPage);
+    return currentJuz.pages.filter(
+      (p) => p.displayPage === selectedDisplayPage,
+    );
   }, [currentJuz, selectedDisplayPage]);
 
   // Combined ayahs for playback (all pages in view)
   const allPageAyahs = useMemo(() => {
-    return currentPages.flatMap(p => p.ayahs);
+    return currentPages.flatMap((p) => p.ayahs);
   }, [currentPages]);
 
   // Reset display page when juz changes
@@ -250,7 +278,7 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
 
   // Scroll to top when page changes
   useEffect(() => {
-    pageContentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    pageContentRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   }, [selectedDisplayPage, selectedJuz]);
 
   const handlePlayPage = () => {
@@ -312,7 +340,7 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
     if (!currentAyah) return;
     for (const juz of juzData) {
       for (const page of juz.pages) {
-        if (page.ayahs.some(a => a.number === currentAyah.number)) {
+        if (page.ayahs.some((a) => a.number === currentAyah.number)) {
           setSelectedJuz(juz.juzNumber);
           setSelectedDisplayPage(page.displayPage);
           return;
@@ -341,10 +369,10 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
           <label className="hafezi-sidebar-label">PARA (JUZ)</label>
           <select
             value={selectedJuz}
-            onChange={e => setSelectedJuz(Number(e.target.value))}
+            onChange={(e) => setSelectedJuz(Number(e.target.value))}
             className="hafezi-select"
           >
-            {Array.from({ length: 30 }, (_, i) => i + 1).map(j => (
+            {Array.from({ length: 30 }, (_, i) => i + 1).map((j) => (
               <option key={j} value={j}>
                 {j} - {juzNames[j]}
               </option>
@@ -357,15 +385,19 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
           <label className="hafezi-sidebar-label">PAGE</label>
           <select
             value={selectedDisplayPage}
-            onChange={e => setSelectedDisplayPage(Number(e.target.value))}
+            onChange={(e) => setSelectedDisplayPage(Number(e.target.value))}
             className="hafezi-select"
           >
-            {uniqueDisplayPages.map(dp => {
-              const pagesWithDp = currentJuz.pages.filter(p => p.displayPage === dp);
-              const suffix = pagesWithDp.length > 1 ? ` (${pagesWithDp.length} pages)` : '';
+            {uniqueDisplayPages.map((dp) => {
+              const pagesWithDp = currentJuz.pages.filter(
+                (p) => p.displayPage === dp,
+              );
+              const suffix =
+                pagesWithDp.length > 1 ? ` (${pagesWithDp.length} pages)` : "";
               return (
                 <option key={dp} value={dp}>
-                  {dp}{suffix}
+                  {dp}
+                  {suffix}
                 </option>
               );
             })}
@@ -376,18 +408,21 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
         <div className="hafezi-sidebar-section">
           <label className="hafezi-sidebar-label">NAVIGATION</label>
           <div className="hafezi-page-indicator">
-            <span className="hafezi-page-num">
-              Page {selectedDisplayPage}
-            </span>
+            <span className="hafezi-page-num">Page {selectedDisplayPage}</span>
             <span className="hafezi-page-meta">
-              Para {selectedJuz} • {displayPageIdx + 1} of {uniqueDisplayPages.length}
+              Para {selectedJuz} • {displayPageIdx + 1} of{" "}
+              {uniqueDisplayPages.length}
             </span>
-            {isDualPage && <span className="hafezi-dual-badge">Side by Side</span>}
+            {isDualPage && (
+              <span className="hafezi-dual-badge">Side by Side</span>
+            )}
           </div>
           <div className="hafezi-nav-row">
             <button
               className="hafezi-nav-btn"
-              onClick={() => { setSelectedJuz(Math.max(1, selectedJuz - 1)); }}
+              onClick={() => {
+                setSelectedJuz(Math.max(1, selectedJuz - 1));
+              }}
               disabled={selectedJuz <= 1}
               title="Previous Para"
             >
@@ -404,14 +439,19 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
             <button
               className="hafezi-nav-btn"
               onClick={handleNextPage}
-              disabled={displayPageIdx === uniqueDisplayPages.length - 1 && selectedJuz === 30}
+              disabled={
+                displayPageIdx === uniqueDisplayPages.length - 1 &&
+                selectedJuz === 30
+              }
               title="Next Page"
             >
               <ChevronRight size={16} />
             </button>
             <button
               className="hafezi-nav-btn"
-              onClick={() => { setSelectedJuz(Math.min(30, selectedJuz + 1)); }}
+              onClick={() => {
+                setSelectedJuz(Math.min(30, selectedJuz + 1));
+              }}
               disabled={selectedJuz >= 30}
               title="Next Para"
             >
@@ -427,12 +467,16 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
         <div className="hafezi-sidebar-section">
           <label className="hafezi-sidebar-label">VIEW MODE</label>
           <button
-            className={`hafezi-view-toggle-btn ${viewMode === 'image' ? 'active' : ''}`}
-            onClick={() => setViewMode(viewMode === 'text' ? 'image' : 'text')}
-            title={viewMode === 'text' ? 'Switch to Image view' : 'Switch to Text view'}
+            className={`hafezi-view-toggle-btn ${viewMode === "image" ? "active" : ""}`}
+            onClick={() => setViewMode(viewMode === "text" ? "image" : "text")}
+            title={
+              viewMode === "text"
+                ? "Switch to Image view"
+                : "Switch to Text view"
+            }
           >
-            {viewMode === 'text' ? <Image size={16} /> : <Type size={16} />}
-            <span>{viewMode === 'text' ? 'Image' : 'Text'}</span>
+            {viewMode === "text" ? <Image size={16} /> : <Type size={16} />}
+            <span>{viewMode === "text" ? "Image" : "Text"}</span>
           </button>
         </div>
 
@@ -441,16 +485,16 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
           <label className="hafezi-sidebar-label">PAGE PLAYBACK</label>
           <div className="hafezi-playback-row">
             <button
-              className={`hafezi-repeat-btn ${repeatOn ? 'active' : ''}`}
+              className={`hafezi-repeat-btn ${repeatOn ? "active" : ""}`}
               onClick={handleToggleRepeat}
-              title={repeatOn ? 'Repeat ON' : 'Repeat OFF'}
+              title={repeatOn ? "Repeat ON" : "Repeat OFF"}
             >
               <Repeat size={16} />
             </button>
             <button
-              className={`hafezi-play-page-btn ${isPagePlaying ? 'playing' : ''}`}
+              className={`hafezi-play-page-btn ${isPagePlaying ? "playing" : ""}`}
               onClick={handlePlayPage}
-              title={isPagePlaying ? 'Stop page' : 'Play page'}
+              title={isPagePlaying ? "Stop page" : "Play page"}
             >
               {isLoading && isPagePlaying ? (
                 <Loader size={16} className="spin" />
@@ -459,7 +503,7 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
               ) : (
                 <Play size={16} />
               )}
-              <span>{isPagePlaying && isPlaying ? 'Stop' : 'Play Page'}</span>
+              <span>{isPagePlaying && isPlaying ? "Stop" : "Play Page"}</span>
             </button>
           </div>
         </div>
@@ -475,7 +519,8 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
               <div className="hafezi-player-text">
                 <span className="hafezi-player-surah">{surahName}</span>
                 <span className="hafezi-player-ayah">
-                  Ayah {currentAyah.numberInSurah} • Juz {currentAyah.juz} • Page {currentAyah.page}
+                  Ayah {currentAyah.numberInSurah} • Juz {currentAyah.juz} •
+                  Page {currentAyah.page}
                 </span>
               </div>
               <button
@@ -498,7 +543,7 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
                 min={0}
                 max={duration || 0}
                 value={currentTime}
-                onChange={e => onSeek(Number(e.target.value))}
+                onChange={(e) => onSeek(Number(e.target.value))}
                 className="hafezi-player-progress-input"
               />
             </div>
@@ -511,13 +556,17 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
 
             {/* Controls (bottom) */}
             <div className="hafezi-player-controls">
-              <button className="hafezi-player-btn" onClick={onPrevious} title="Previous Ayah">
+              <button
+                className="hafezi-player-btn"
+                onClick={onPrevious}
+                title="Previous Ayah"
+              >
                 <SkipBack size={16} />
               </button>
               <button
                 className="hafezi-player-btn hafezi-player-btn-main"
                 onClick={onTogglePlay}
-                title={isPlaying ? 'Pause' : 'Play'}
+                title={isPlaying ? "Pause" : "Play"}
               >
                 {isLoading ? (
                   <Loader size={20} className="spin" />
@@ -527,17 +576,29 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
                   <Play size={20} />
                 )}
               </button>
-              <button className="hafezi-player-btn" onClick={onNext} title="Next Ayah">
+              <button
+                className="hafezi-player-btn"
+                onClick={onNext}
+                title="Next Ayah"
+              >
                 <SkipForward size={16} />
               </button>
-              <button className="hafezi-player-btn" onClick={onStop} title="Stop">
+              <button
+                className="hafezi-player-btn"
+                onClick={onStop}
+                title="Stop"
+              >
                 <Square size={14} />
               </button>
             </div>
 
             {/* Volume slider */}
             <div className="hafezi-player-volume-slider">
-              <button className="hafezi-player-vol-btn" onClick={handleToggleMute} title={volume === 0 ? 'Unmute' : 'Mute'}>
+              <button
+                className="hafezi-player-vol-btn"
+                onClick={handleToggleMute}
+                title={volume === 0 ? "Unmute" : "Mute"}
+              >
                 <VolumeIcon size={14} />
               </button>
               <input
@@ -546,9 +607,11 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
                 max={1}
                 step={0.02}
                 value={volume}
-                onChange={e => onVolumeChange(Number(e.target.value))}
+                onChange={(e) => onVolumeChange(Number(e.target.value))}
               />
-              <span className="hafezi-player-volume-pct">{Math.round(volume * 100)}%</span>
+              <span className="hafezi-player-volume-pct">
+                {Math.round(volume * 100)}%
+              </span>
             </div>
           </div>
         )}
@@ -556,7 +619,7 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
 
       {/* ---- Right: Quran Page Area ---- */}
       <div className="hafezi-page-area" ref={pageContentRef}>
-        <div className={`hafezi-page-wrapper ${isDualPage ? 'dual' : ''}`}>
+        <div className={`hafezi-page-wrapper ${isDualPage ? "dual" : ""}`}>
           {currentPages.map((page, idx) => (
             <SinglePage
               key={page.pageIndex}
@@ -567,7 +630,9 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
               onPlayAyah={onPlayAyah}
               isDualPage={isDualPage}
               viewMode={viewMode}
-              pagePosition={isDualPage ? (idx === 0 ? 'right' : 'left') : undefined}
+              pagePosition={
+                isDualPage ? (idx === 0 ? "right" : "left") : undefined
+              }
             />
           ))}
         </div>
@@ -585,8 +650,8 @@ interface SinglePageProps {
   isPlaying: boolean;
   onPlayAyah: (ayah: Ayah) => void;
   isDualPage: boolean;
-  viewMode: 'text' | 'image';
-  pagePosition?: 'right' | 'left';
+  viewMode: "text" | "image";
+  pagePosition?: "right" | "left";
 }
 
 const SinglePage: React.FC<SinglePageProps> = ({
@@ -599,9 +664,24 @@ const SinglePage: React.FC<SinglePageProps> = ({
   viewMode,
   pagePosition,
 }) => {
+
+  // Normalize Arabic text for better comparison (e.g. to detect Bismillah)
+  const normalizeArabic = (text: string) => {
+    return text
+      .normalize("NFKD")
+      .replace(/[\u064B-\u065F\u0670]/g, "")
+      .replace(/ٱ/g, "ا")
+      .trim();
+  }
+
   // Detect surah starts on current page
   const surahStartsOnPage = useMemo(() => {
-    const starts: { surahNumber: number; surahName: string; surahArabicName: string; index: number }[] = [];
+    const starts: {
+      surahNumber: number;
+      surahName: string;
+      surahArabicName: string;
+      index: number;
+    }[] = [];
     page.ayahs.forEach((ayah, idx) => {
       if (ayah.numberInSurah === 1) {
         starts.push({
@@ -625,13 +705,17 @@ const SinglePage: React.FC<SinglePageProps> = ({
 
     interface Line {
       parts: LinePart[];
-      surahStart?: { surahNumber: number; surahName: string; surahArabicName: string };
+      surahStart?: {
+        surahNumber: number;
+        surahName: string;
+        surahArabicName: string;
+      };
     }
 
     const lines: Line[] = [];
 
     page.ayahs.forEach((ayah, idx) => {
-      const surahStart = surahStartsOnPage.find(s => s.index === idx);
+      const surahStart = surahStartsOnPage.find((s) => s.index === idx);
       if (surahStart) {
         lines.push({
           parts: [],
@@ -643,10 +727,24 @@ const SinglePage: React.FC<SinglePageProps> = ({
         });
       }
 
+      const normalizedAyah = normalizeArabic(ayah.text);
+      const normalizedBismillah = normalizeArabic("بسم الله الرحمن الرحيم");
+
+      if (
+        ayah.numberInSurah === 1 &&
+        normalizedAyah.startsWith(normalizedBismillah)
+      ) {
+        ayah.text = ayah.text.replace(/^.*?ٱلرَّحِيمِ\s*/u, "");
+      }
+
       const ayahText = `${ayah.text} ﴿${toArabicNumber(ayah.numberInSurah)}﴾`;
       const isActive = currentAyah?.number === ayah.number;
 
-      if (lines.length === 0 || lines[lines.length - 1].surahStart || lines[lines.length - 1].parts.length === 0) {
+      if (
+        lines.length === 0 ||
+        lines[lines.length - 1].surahStart ||
+        lines[lines.length - 1].parts.length === 0
+      ) {
         if (lines.length === 0 || lines[lines.length - 1].surahStart) {
           lines.push({ parts: [] });
         }
@@ -663,7 +761,9 @@ const SinglePage: React.FC<SinglePageProps> = ({
   }, [page, currentAyah, isPlaying, surahStartsOnPage]);
 
   return (
-    <div className={`hafezi-page ${isDualPage ? 'hafezi-page-half' : ''} ${pagePosition ? `page-${pagePosition}` : ''}`}>
+    <div
+      className={`hafezi-page ${isDualPage ? "hafezi-page-half" : ""} ${pagePosition ? `page-${pagePosition}` : ""}`}
+    >
       {/* Page header ornament */}
       <div className="hafezi-page-header-ornament">
         <div className="hafezi-ornament-line"></div>
@@ -674,7 +774,7 @@ const SinglePage: React.FC<SinglePageProps> = ({
       </div>
 
       {/* Content */}
-      {viewMode === 'image' ? (
+      {viewMode === "image" ? (
         <div className="hafezi-page-content hafezi-image-view">
           {page.pageImage ? (
             <img
@@ -692,44 +792,52 @@ const SinglePage: React.FC<SinglePageProps> = ({
         </div>
       ) : (
         <div className="hafezi-page-content">
-        {pageLines.map((line, lineIdx) => {
-          if (line.surahStart) {
-            return (
-              <div key={`surah-${lineIdx}`} className="hafezi-surah-header">
-                <div className="hafezi-surah-ornament">
-                  <div className="hafezi-surah-ornament-wing left"></div>
-                  <div className="hafezi-surah-name-box">
-                    <span className="hafezi-surah-name-ar">{line.surahStart.surahArabicName}</span>
+          {pageLines.map((line, lineIdx) => {
+            if (line.surahStart) {
+              return (
+                <div key={`surah-${lineIdx}`} className="hafezi-surah-header">
+                  <div className="hafezi-surah-ornament">
+                    <div className="hafezi-surah-ornament-wing left"></div>
+                    <div className="hafezi-surah-name-box">
+                      <span className="hafezi-surah-name-ar">
+                        {line.surahStart.surahArabicName}
+                      </span>
+                    </div>
+                    <div className="hafezi-surah-ornament-wing right"></div>
                   </div>
-                  <div className="hafezi-surah-ornament-wing right"></div>
+                  {line.surahStart.surahNumber !== 9 &&
+                    line.surahStart.surahNumber !== 1 && (
+                      <div className="hafezi-bismillah">
+                        بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ
+                      </div>
+                    )}
                 </div>
-                {line.surahStart.surahNumber !== 9 && line.surahStart.surahNumber !== 1 && (
-                  <div className="hafezi-bismillah">
-                    بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ
-                  </div>
-                )}
+              );
+            }
+
+            return (
+              <div
+                key={`line-${lineIdx}`}
+                className="hafezi-line"
+                dir="rtl"
+                lang="ar"
+              >
+                {line.parts.map((part, partIdx) => (
+                  <span
+                    key={`${part.ayah.number}-${partIdx}`}
+                    className={`hafezi-ayah-text ${
+                      currentAyah?.number === part.ayah.number ? "active" : ""
+                    } ${part.isPlaying ? "playing" : ""}`}
+                    onClick={() => onPlayAyah(part.ayah)}
+                    title={`Ayah ${part.ayah.numberInSurah}`}
+                  >
+                    {part.text}
+                  </span>
+                ))}
               </div>
             );
-          }
-
-          return (
-            <div key={`line-${lineIdx}`} className="hafezi-line" dir="rtl" lang="ar">
-              {line.parts.map((part, partIdx) => (
-                <span
-                  key={`${part.ayah.number}-${partIdx}`}
-                  className={`hafezi-ayah-text ${
-                    currentAyah?.number === part.ayah.number ? 'active' : ''
-                  } ${part.isPlaying ? 'playing' : ''}`}
-                  onClick={() => onPlayAyah(part.ayah)}
-                  title={`Ayah ${part.ayah.numberInSurah}`}
-                >
-                  {part.text}
-                </span>
-              ))}
-            </div>
-          );
-        })}
-      </div>
+          })}
+        </div>
       )}
 
       {/* Page footer */}
