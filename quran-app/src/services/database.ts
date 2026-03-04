@@ -442,6 +442,27 @@ export function deletePage(juz: number, pageIndex: number): void {
 }
 
 /**
+ * Import a database from a raw SQLite file (Uint8Array).
+ * Replaces the current in-memory DB and persists to localStorage.
+ * Throws if the data is not a valid SQLite file.
+ */
+export async function importDatabase(data: Uint8Array): Promise<void> {
+  const { default: initSqlJs } = await import('sql.js');
+  const SQL = await initSqlJs({ locateFile: () => '/sql-wasm.wasm' });
+
+  // Validate: SQLite files start with the magic string "SQLite format 3\0"
+  const magic = String.fromCharCode(...Array.from(data.slice(0, 15)));
+  if (!magic.startsWith('SQLite format 3')) {
+    throw new Error('Not a valid SQLite database file');
+  }
+
+  const newDb = new SQL.Database(data);
+  db = newDb;
+  initPromise = Promise.resolve(db);
+  saveToStorage();
+}
+
+/**
  * Export the database as a downloadable file
  */
 export function exportDatabase(): Uint8Array | null {

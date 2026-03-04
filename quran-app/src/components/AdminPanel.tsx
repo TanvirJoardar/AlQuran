@@ -7,6 +7,7 @@ import {
   resetAllMappings,
   getCustomMappingsCount,
   exportDatabase,
+  importDatabase,
   updatePageImage,
   removePageImage,
   renumberSubsequentPages,
@@ -175,6 +176,28 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ surahs, onMappingsChange
     a.click();
     URL.revokeObjectURL(url);
     showToast('Database exported successfully', 'success');
+  };
+
+  const handleImport = (file: File) => {
+    if (!file.name.endsWith('.db') && !file.name.endsWith('.sqlite') && !file.name.endsWith('.sqlite3')) {
+      showToast('Please select a .db / .sqlite file', 'error');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const bytes = new Uint8Array(reader.result as ArrayBuffer);
+        await importDatabase(bytes);
+        loadMappings();
+        onMappingsChanged();
+        showToast('Database imported successfully!', 'success');
+      } catch (err) {
+        console.error('Import failed:', err);
+        showToast((err as Error).message || 'Import failed', 'error');
+      }
+    };
+    reader.onerror = () => showToast('Failed to read file', 'error');
+    reader.readAsArrayBuffer(file);
   };
 
   const getAyahInfo = (globalNumber: number) => {
@@ -347,6 +370,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ surahs, onMappingsChange
           </div>
         </div>
         <div className="admin-header-actions">
+          <label className="admin-btn admin-btn-outline" title="Import database" style={{ cursor: 'pointer' }}>
+            <Upload size={14} />
+            <span>Import DB</span>
+            <input
+              type="file"
+              accept=".db,.sqlite,.sqlite3"
+              hidden
+              onChange={e => {
+                const file = e.target.files?.[0];
+                if (file) handleImport(file);
+                e.target.value = '';
+              }}
+            />
+          </label>
           <button className="admin-btn admin-btn-outline" onClick={handleExport} title="Export database">
             <Download size={14} />
             <span>Export DB</span>
