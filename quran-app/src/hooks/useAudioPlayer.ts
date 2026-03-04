@@ -229,6 +229,22 @@ export function useAudioPlayer() {
     setState(prev => ({ ...prev, volume: clamped }));
   }, []);
 
+  const previousAyah = useCallback(() => {
+    const list = ayahsRef.current;
+    const current = state.currentAyah;
+    if (!current || !list.length) return;
+    const idx = list.findIndex(a => a.number === current.number);
+    if (idx > 0) playAyah(list[idx - 1]);
+  }, [state.currentAyah, playAyah]);
+
+  const nextAyah = useCallback(() => {
+    const list = ayahsRef.current;
+    const current = state.currentAyah;
+    if (!current || !list.length) return;
+    const idx = list.findIndex(a => a.number === current.number);
+    if (idx >= 0 && idx < list.length - 1) playAyah(list[idx + 1]);
+  }, [state.currentAyah, playAyah]);
+
   return {
     ...state,
     playAyah,
@@ -241,5 +257,7 @@ export function useAudioPlayer() {
     setRepeatMode,
     setOnPlaylistEnd,
     setVolume,
+    previousAyah,
+    nextAyah,
   };
 }

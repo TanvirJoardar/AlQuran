@@ -25,17 +25,41 @@ function App() {
   const [dbReady, setDbReady] = useState(false);
   const [hafeziJumpAyah, setHafeziJumpAyah] = useState<Ayah | null>(null);
 
+  // Main player: Surah view + Recitation view
   const player = useAudioPlayer();
+  // Separate player exclusively for Hafezi Quran (runs independently)
+  const hafeziPlayer = useAudioPlayer();
+
+  // ── Cross-stop wrappers ───────────────────────────────────────────────────
+  // Starting hafezi player stops the main player and vice-versa.
+  const hafeziPlayPage = useCallback((ayahs: Ayah[]) => {
+    player.stop();
+    hafeziPlayer.playSurah(ayahs);
+  }, [player, hafeziPlayer]);
+
+  const hafeziPlayAyah = useCallback((ayah: Ayah) => {
+    player.stop();
+    hafeziPlayer.playAyah(ayah);
+  }, [player, hafeziPlayer]);
+
+  const mainPlayAyah = useCallback((ayah: Ayah) => {
+    hafeziPlayer.stop();
+    player.playAyah(ayah);
+  }, [player, hafeziPlayer]);
+
+  const mainPlaySurah = useCallback((ayahs: Ayah[]) => {
+    hafeziPlayer.stop();
+    player.playSurah(ayahs);
+  }, [player, hafeziPlayer]);
 
   const handleSetViewMode = useCallback((mode: ViewMode) => {
     if (mode === 'hafezi') {
-      setHafeziJumpAyah(player.currentAyah);
+      setHafeziJumpAyah(hafeziPlayer.currentAyah);
     }
     setViewMode(mode);
-  }, [player.currentAyah]);
+  }, [hafeziPlayer.currentAyah]);
 
-  // Derive the surah name from whichever ayah is currently playing,
-  // so it updates correctly across all views (Surah, Hafezi, Recitation).
+  // Surah name for the main (surah/recitation) player
   const currentSurahName = useMemo(() => {
     if (!player.currentAyah || !quranData) return undefined;
     const surah = quranData.data.surahs.find(s =>
@@ -43,6 +67,15 @@ function App() {
     );
     return surah?.englishName;
   }, [player.currentAyah, quranData]);
+
+  // Surah name for the hafezi player
+  const hafeziSurahName = useMemo(() => {
+    if (!hafeziPlayer.currentAyah || !quranData) return undefined;
+    const surah = quranData.data.surahs.find(s =>
+      s.ayahs.some(a => a.number === hafeziPlayer.currentAyah!.number)
+    );
+    return surah?.englishName;
+  }, [hafeziPlayer.currentAyah, quranData]);
 
   // Initialize database
   useEffect(() => {
@@ -227,8 +260,8 @@ function App() {
                 currentAyah={player.currentAyah}
                 isPlaying={player.isPlaying}
                 isLoading={player.isLoading}
-                onPlayAyah={player.playAyah}
-                onPlaySurah={player.playSurah}
+                onPlayAyah={mainPlayAyah}
+                onPlaySurah={mainPlaySurah}
               />
             ) : (
               <div className="empty-state">
@@ -240,27 +273,27 @@ function App() {
           ) : viewMode === 'hafezi' ? (
             <HafeziQuran
               surahs={quranData?.data.surahs || []}
-              currentAyah={player.currentAyah}
-              isPlaying={player.isPlaying}
-              isLoading={player.isLoading}
-              onPlayPage={player.playSurah}
-              onPlayAyah={player.playAyah}
-              onSetRepeat={player.setRepeatMode}
-              onSetAyahsList={player.setAyahsList}
-              onSetAutoPlayNext={player.setAutoPlayNext}
-              onStop={player.stop}
+              currentAyah={hafeziPlayer.currentAyah}
+              isPlaying={hafeziPlayer.isPlaying}
+              isLoading={hafeziPlayer.isLoading}
+              onPlayPage={hafeziPlayPage}
+              onPlayAyah={hafeziPlayAyah}
+              onSetRepeat={hafeziPlayer.setRepeatMode}
+              onSetAyahsList={hafeziPlayer.setAyahsList}
+              onSetAutoPlayNext={hafeziPlayer.setAutoPlayNext}
+              onStop={hafeziPlayer.stop}
               mappingsVersion={mappingsVersion}
               jumpToAyah={hafeziJumpAyah}
               sidebarOpen={sidebarOpen}
-              currentTime={player.currentTime}
-              duration={player.duration}
-              volume={player.volume}
-              surahName={currentSurahName}
-              onTogglePlay={player.togglePlay}
-              onSeek={player.seek}
-              onPrevious={handlePreviousAyah}
-              onNext={handleNextAyah}
-              onVolumeChange={player.setVolume}
+              currentTime={hafeziPlayer.currentTime}
+              duration={hafeziPlayer.duration}
+              volume={hafeziPlayer.volume}
+              surahName={hafeziSurahName}
+              onTogglePlay={hafeziPlayer.togglePlay}
+              onSeek={hafeziPlayer.seek}
+              onPrevious={hafeziPlayer.previousAyah}
+              onNext={hafeziPlayer.nextAyah}
+              onVolumeChange={hafeziPlayer.setVolume}
             />
           ) : viewMode === 'recitation' ? (
             <RecitationPanel
@@ -269,7 +302,7 @@ function App() {
               isPlaying={player.isPlaying}
               isLoading={player.isLoading}
               mappingsVersion={mappingsVersion}
-              onPlay={player.playSurah}
+              onPlay={mainPlaySurah}
               onStop={player.stop}
               onSetRepeat={player.setRepeatMode}
               onSetAyahsList={player.setAyahsList}
@@ -285,8 +318,8 @@ function App() {
         </main>
       </div>
 
-      {/* Audio Player - hidden in Hafezi mode (player is in sidebar) */}
-      {viewMode !== 'hafezi' && (
+      {/* Bottom audio bar — only for Surah / Recitation views (hide in Hafezi and Admin) */}
+      {(viewMode === 'surah' || viewMode === 'recitation') && (
         <AudioPlayerBar
           isPlaying={player.isPlaying}
           currentAyah={player.currentAyah}
