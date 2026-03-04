@@ -342,6 +342,39 @@ export function removePageImage(juz: number, pageIndex: number): void {
 }
 
 /**
+ * Renumber all pages with page_index > pageIndex so they follow sequentially.
+ * e.g. if pageIndex=1 gets displayPage=1, pages 2,3,4... become 2,3,4...
+ */
+export function renumberSubsequentPages(
+  juz: number,
+  pageIndex: number,
+  newDisplayPage: number
+): void {
+  if (!db) return;
+
+  // Get all pages after the edited one, ordered by page_index
+  const results = db.exec(
+    `SELECT page_index FROM page_mappings
+     WHERE juz = ${juz} AND page_index > ${pageIndex}
+     ORDER BY page_index`
+  );
+
+  if (results.length === 0 || results[0].values.length === 0) return;
+
+  const stmt = db.prepare(
+    `UPDATE page_mappings SET display_page = ?, is_custom = 1 WHERE juz = ? AND page_index = ?`
+  );
+
+  results[0].values.forEach((row, i) => {
+    const pi = row[0] as number;
+    stmt.run([newDisplayPage + 1 + i, juz, pi]);
+  });
+
+  stmt.free();
+  saveToStorage();
+}
+
+/**
  * Export the database as a downloadable file
  */
 export function exportDatabase(): Uint8Array | null {

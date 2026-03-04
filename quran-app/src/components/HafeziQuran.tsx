@@ -393,7 +393,7 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
 
       {/* Quran Page(s) */}
       <div className={`hafezi-page-wrapper ${isDualPage ? 'dual' : ''}`} ref={pageContentRef}>
-        {currentPages.map(page => (
+        {currentPages.map((page, idx) => (
           <SinglePage
             key={page.pageIndex}
             page={page}
@@ -403,6 +403,7 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
             onPlayAyah={onPlayAyah}
             isDualPage={isDualPage}
             viewMode={viewMode}
+            pagePosition={isDualPage ? (idx === 0 ? 'right' : 'left') : undefined}
           />
         ))}
       </div>
@@ -420,6 +421,7 @@ interface SinglePageProps {
   onPlayAyah: (ayah: Ayah) => void;
   isDualPage: boolean;
   viewMode: 'text' | 'image';
+  pagePosition?: 'right' | 'left';
 }
 
 const SinglePage: React.FC<SinglePageProps> = ({
@@ -430,6 +432,7 @@ const SinglePage: React.FC<SinglePageProps> = ({
   onPlayAyah,
   isDualPage,
   viewMode,
+  pagePosition,
 }) => {
   // Detect surah starts on current page
   const surahStartsOnPage = useMemo(() => {
@@ -495,7 +498,7 @@ const SinglePage: React.FC<SinglePageProps> = ({
   }, [page, currentAyah, isPlaying, surahStartsOnPage]);
 
   return (
-    <div className={`hafezi-page ${isDualPage ? 'hafezi-page-half' : ''}`}>
+    <div className={`hafezi-page ${isDualPage ? 'hafezi-page-half' : ''} ${pagePosition ? `page-${pagePosition}` : ''}`}>
       {/* Page header ornament */}
       <div className="hafezi-page-header-ornament">
         <div className="hafezi-ornament-line"></div>

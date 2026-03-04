@@ -1817,7 +1817,7 @@ body {
 
 .admin-page-list-header {
   display: grid;
-  grid-template-columns: 60px 90px 130px 130px 1fr 110px;
+  grid-template-columns: 60px 200px 130px 130px 1fr 110px;
   padding: 12px 18px;
   background: linear-gradient(135deg, #1b5e3b, #2e7d52);
   color: #fff;
@@ -1856,7 +1856,7 @@ body {
 
 .admin-page-row-main {
   display: grid;
-  grid-template-columns: 60px 90px 130px 130px 1fr 110px;
+  grid-template-columns: 60px 200px 130px 130px 1fr 110px;
   padding: 10px 18px;
   cursor: pointer;
   align-items: center;
@@ -2107,7 +2107,7 @@ body {
 @media (max-width: 900px) {
   .admin-page-list-header,
   .admin-page-row-main {
-    grid-template-columns: 45px 70px 100px 100px 1fr 80px;
+    grid-template-columns: 45px 170px 100px 100px 1fr 80px;
     padding: 8px 12px;
     font-size: 0.72rem;
   }
@@ -2399,7 +2399,17 @@ body {
 .hafezi-page-wrapper.dual {
   display: flex;
   gap: 12px;
-  flex-direction: row;
+  flex-direction: row-reverse; /* first page = right side (Quran layout) */
+}
+
+.hafezi-page-half.page-right {
+  border-left: 1px solid rgba(139, 90, 43, 0.25);
+  padding-left: 8px;
+}
+
+.hafezi-page-half.page-left {
+  border-right: 1px solid rgba(139, 90, 43, 0.25);
+  padding-right: 8px;
 }
 
 .hafezi-page-half {
@@ -2426,7 +2436,7 @@ body {
 
 @media (max-width: 900px) {
   .hafezi-page-wrapper.dual {
-    flex-direction: column;
+    flex-direction: column; /* top = first (right) page on mobile */
     gap: 16px;
   }
 

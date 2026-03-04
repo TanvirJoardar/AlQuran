@@ -9,6 +9,7 @@ import {
   exportDatabase,
   updatePageImage,
   removePageImage,
+  renumberSubsequentPages,
   type PageMapping,
 } from '../services/database';
 import {
@@ -125,6 +126,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ surahs, onMappingsChange
     }
 
     updatePageMapping(selectedJuz, editingPage, editStart, editEnd, editDisplayPage);
+    renumberSubsequentPages(selectedJuz, editingPage, editDisplayPage);
     setEditingPage(null);
     loadMappings();
     onMappingsChanged();
