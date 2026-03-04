@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import type { Surah, Ayah } from '../types/quran';
 import { getPageMappings } from '../services/database';
 import {
@@ -10,6 +10,8 @@ import {
   Loader,
   BookOpen,
   SkipForward,
+  Repeat,
+  Infinity,
 } from 'lucide-react';
 
 interface RecitationPanelProps {
@@ -23,6 +25,7 @@ interface RecitationPanelProps {
   onSetRepeat: (v: boolean) => void;
   onSetAyahsList: (ayahs: Ayah[]) => void;
   onSetAutoPlayNext: (v: boolean) => void;
+  onSetOnPlaylistEnd: (cb: (() => void) | null) => void;
 }
 
 type EnrichedAyah = Ayah & { surahNumber: number; surahName: string; juzNumber: number; pageIndex: number };
@@ -52,11 +55,19 @@ export const RecitationPanel: React.FC<RecitationPanelProps> = ({
   onSetRepeat,
   onSetAyahsList,
   onSetAutoPlayNext,
+  onSetOnPlaylistEnd,
 }) => {
   const [selectedPage, setSelectedPage] = useState(1);
   const [fromPara, setFromPara] = useState(1);
   const [toPara, setToPara] = useState(30);
   const [isActive, setIsActive] = useState(false);
+  // repeatCount: 0 = infinite, 1+ = fixed number of rounds
+  const [repeatCount, setRepeatCount] = useState(1);
+  const [currentRound, setCurrentRound] = useState(1);
+  const currentRoundRef  = useRef(1);
+  const repeatCountRef   = useRef(1);
+  const playlistRef      = useRef<Ayah[]>([]);
+  const isActiveRef      = useRef(false);
 
   // Flat enriched ayah map: ayah.number -> EnrichedAyah
   const allAyahsMap = useMemo(() => {
@@ -144,26 +155,55 @@ export const RecitationPanel: React.FC<RecitationPanelProps> = ({
     return match ? match.displayPage : null;
   }, [currentAyah, isActive, allAyahsMap]);
 
-  // Detect playback ending
+  // Detect playback ending — only used when repeat is off (rounds=1); multi-round handled via onSetOnPlaylistEnd
   useEffect(() => {
     if (isActive && !isPlaying && !isLoading) {
       setIsActive(false);
+      isActiveRef.current = false;
     }
   }, [isPlaying, isLoading, isActive]);
 
-  const handlePlay = useCallback(() => {
-    if (playlist.length === 0) return;
+  // Keep refs in sync
+  useEffect(() => { repeatCountRef.current = repeatCount; }, [repeatCount]);
+
+  const startRound = useCallback((pl: Ayah[], round: number) => {
     onSetRepeat(false);
-    onSetAyahsList(playlist);
+    onSetAyahsList(pl);
     onSetAutoPlayNext(true);
-    onPlay(playlist);
+    onPlay(pl);
+    currentRoundRef.current = round;
+    setCurrentRound(round);
+  }, [onPlay, onSetRepeat, onSetAyahsList, onSetAutoPlayNext]);
+
+  const handlePlay = useCallback(() => {
+    if (playlistRef.current.length === 0) return;
+    const pl = playlistRef.current;
+
+    // Register end-of-round callback for repeat
+    onSetOnPlaylistEnd(() => {
+      if (!isActiveRef.current) return;
+      const nextRound = currentRoundRef.current + 1;
+      const maxRounds  = repeatCountRef.current; // 0 = infinite
+      if (maxRounds === 0 || nextRound <= maxRounds) {
+        startRound(pl, nextRound);
+      } else {
+        setIsActive(false);
+        isActiveRef.current = false;
+        onSetOnPlaylistEnd(null);
+      }
+    });
+
+    isActiveRef.current = true;
     setIsActive(true);
-  }, [playlist, onPlay, onSetRepeat, onSetAyahsList, onSetAutoPlayNext]);
+    startRound(pl, 1);
+  }, [startRound, onSetOnPlaylistEnd]);
 
   const handleStop = useCallback(() => {
     onStop();
+    onSetOnPlaylistEnd(null);
     setIsActive(false);
-  }, [onStop]);
+    isActiveRef.current = false;
+  }, [onStop, onSetOnPlaylistEnd]);
 
   const handleParaFromChange = (v: number) => {
     setFromPara(v);
@@ -177,6 +217,10 @@ export const RecitationPanel: React.FC<RecitationPanelProps> = ({
 
   const isCurrentlyPlaying = isActive && isPlaying;
   const isCurrentlyLoading = isActive && isLoading;
+  const totalRounds = repeatCount === 0 ? '∞' : repeatCount;
+
+  // Keep playlistRef synced so the end-of-round callback always has the current playlist
+  useEffect(() => { playlistRef.current = playlist; }, [playlist]);
 
   // Build segment list for display (one row per para in range)
   const segments = useMemo(() => {
@@ -250,6 +294,44 @@ export const RecitationPanel: React.FC<RecitationPanelProps> = ({
               ))}
             </select>
           </div>
+
+          {/* Repeat count */}
+          <div className="recitation-field">
+            <label className="recitation-label">
+              <Repeat size={14} />
+              Repeat
+            </label>
+            <div className="recitation-repeat-wrap">
+              <button
+                className={`recitation-repeat-btn${repeatCount === 0 ? ' active' : ''}`}
+                title="Infinite repeat"
+                onClick={() => setRepeatCount(0)}
+              >
+                <Infinity size={15} />
+              </button>
+              {[1, 2, 3, 5, 7, 10].map(n => (
+                <button
+                  key={n}
+                  className={`recitation-repeat-btn${repeatCount === n ? ' active' : ''}`}
+                  onClick={() => setRepeatCount(n)}
+                >
+                  {n}
+                </button>
+              ))}
+              <input
+                type="number"
+                min={1}
+                max={999}
+                className="recitation-repeat-custom"
+                placeholder="N"
+                title="Custom repeat count"
+                onChange={e => {
+                  const v = parseInt(e.target.value);
+                  if (!isNaN(v) && v >= 1) setRepeatCount(v);
+                }}
+              />
+            </div>
+          </div>
         </div>
 
         {/* Summary */}
@@ -279,7 +361,7 @@ export const RecitationPanel: React.FC<RecitationPanelProps> = ({
                 disabled={playlist.length === 0}
               >
                 <Play size={18} />
-                <span>Play</span>
+                <span>Play{repeatCount !== 1 ? ` (×${repeatCount === 0 ? '∞' : repeatCount})` : ''}</span>
               </button>
             )}
           </div>
@@ -295,6 +377,13 @@ export const RecitationPanel: React.FC<RecitationPanelProps> = ({
             Para {activeParaInfo.juz} — {juzNames[activeParaInfo.juz]}
             {activeParaPage !== null && <> &nbsp;·&nbsp; Page {activeParaPage}</>}
           </span>
+          {(repeatCount !== 1) && (
+            <span className="recitation-np-round">
+              <Repeat size={12} />
+              Round {currentRound}
+              {repeatCount !== 0 && <span className="recitation-np-round-total"> / {totalRounds}</span>}
+            </span>
+          )}
           <span className="recitation-np-surah">{activeParaInfo.surahName}</span>
         </div>
       )}

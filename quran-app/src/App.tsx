@@ -245,6 +245,7 @@ function App() {
               onSetRepeat={player.setRepeatMode}
               onSetAyahsList={player.setAyahsList}
               onSetAutoPlayNext={player.setAutoPlayNext}
+              onSetOnPlaylistEnd={player.setOnPlaylistEnd}
             />
           ) : (
             <AdminPanel
