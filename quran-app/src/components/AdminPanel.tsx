@@ -663,6 +663,41 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ surahs, onMappingsChange
                           </div>
                         </div>
 
+                        {/* Live ayah text preview */}
+                        {editStart >= 1 && editEnd >= editStart && (() => {
+                          const firstAyah = getAyahInfo(editStart);
+                          const lastAyah  = getAyahInfo(editEnd);
+                          const isSame    = editStart === editEnd;
+                          return (firstAyah || lastAyah) ? (
+                            <div className="admin-ayah-live-preview">
+                              {firstAyah && (
+                                <div className="admin-alp-row">
+                                  <span className="admin-alp-badge first">First</span>
+                                  <div className="admin-alp-meta">
+                                    {firstAyah.surahArabicName} — {firstAyah.surahName} {firstAyah.numberInSurah}
+                                  </div>
+                                  <div className="admin-alp-text" dir="rtl" lang="ar">
+                                    {firstAyah.text}
+                                    <span className="admin-alp-num"> ﴿{firstAyah.numberInSurah}﴾</span>
+                                  </div>
+                                </div>
+                              )}
+                              {lastAyah && !isSame && (
+                                <div className="admin-alp-row">
+                                  <span className="admin-alp-badge last">Last</span>
+                                  <div className="admin-alp-meta">
+                                    {lastAyah.surahArabicName} — {lastAyah.surahName} {lastAyah.numberInSurah}
+                                  </div>
+                                  <div className="admin-alp-text" dir="rtl" lang="ar">
+                                    {lastAyah.text}
+                                    <span className="admin-alp-num"> ﴿{lastAyah.numberInSurah}﴾</span>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ) : null;
+                        })()}
+
                         {/* Image upload section */}
                         <div className="admin-image-section">
                           <h5><Image size={14} /> Page Image</h5>
