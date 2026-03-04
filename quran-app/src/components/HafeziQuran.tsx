@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import type { Surah, Ayah } from '../types/quran';
-import { toArabicNumber } from '../utils/helpers';
+import { toArabicNumber, formatTime } from '../utils/helpers';
 import { getPageMappings } from '../services/database';
 import {
   Play,
@@ -14,6 +14,13 @@ import {
   BookOpen,
   Type,
   Image,
+  SkipBack,
+  SkipForward,
+  Square,
+  Volume2,
+  Volume1,
+  VolumeX,
+  BookMarked,
 } from 'lucide-react';
 
 type EnrichedAyah = Ayah & { surahNumber: number; surahName: string; surahArabicName: string };
@@ -44,6 +51,16 @@ interface HafeziQuranProps {
   onStop: () => void;
   mappingsVersion?: number;
   jumpToAyah?: Ayah | null;
+  // Player props for embedded sidebar player
+  currentTime: number;
+  duration: number;
+  volume: number;
+  surahName?: string;
+  onTogglePlay: () => void;
+  onSeek: (time: number) => void;
+  onPrevious: () => void;
+  onNext: () => void;
+  onVolumeChange: (vol: number) => void;
 }
 
 // Arabic Juz names
@@ -73,13 +90,35 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
   onStop,
   mappingsVersion,
   jumpToAyah,
+  currentTime,
+  duration,
+  volume,
+  surahName,
+  onTogglePlay,
+  onSeek,
+  onPrevious,
+  onNext,
+  onVolumeChange,
 }) => {
   const [selectedJuz, setSelectedJuz] = useState(1);
   const [selectedDisplayPage, setSelectedDisplayPage] = useState(0);
   const [repeatOn, setRepeatOn] = useState(false);
   const [isPagePlaying, setIsPagePlaying] = useState(false);
   const [viewMode, setViewMode] = useState<'text' | 'image'>('text');
+  const [prevVolume, setPrevVolume] = useState(1);
   const pageContentRef = useRef<HTMLDivElement>(null);
+
+  const playerProgress = duration > 0 ? (currentTime / duration) * 100 : 0;
+  const VolumeIcon = volume === 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2;
+
+  const handleToggleMute = () => {
+    if (volume > 0) {
+      setPrevVolume(volume);
+      onVolumeChange(0);
+    } else {
+      onVolumeChange(prevVolume || 1);
+    }
+  };
 
   // Build all enriched ayahs once
   const allAyahs = useMemo<EnrichedAyah[]>(() => {
@@ -268,6 +307,20 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
     }
   }, [isPlaying, isLoading, isPagePlaying]);
 
+  // Navigate sidebar to the page containing `currentAyah`
+  const handleGoToCurrentAyah = () => {
+    if (!currentAyah) return;
+    for (const juz of juzData) {
+      for (const page of juz.pages) {
+        if (page.ayahs.some(a => a.number === currentAyah.number)) {
+          setSelectedJuz(juz.juzNumber);
+          setSelectedDisplayPage(page.displayPage);
+          return;
+        }
+      }
+    }
+  };
+
   if (currentPages.length === 0) return null;
 
   const isDualPage = currentPages.length > 1;
@@ -275,53 +328,104 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
 
   return (
     <div className="hafezi-quran">
-      {/* Top Controls Bar */}
-      <div className="hafezi-controls">
-        <div className="hafezi-controls-left">
-          <BookOpen size={18} className="hafezi-controls-icon" />
+      {/* ---- Left Control Panel ---- */}
+      <div className="hafezi-sidebar">
+        {/* Brand / Title */}
+        <div className="hafezi-sidebar-header">
+          <BookOpen size={20} className="hafezi-controls-icon" />
           <span className="hafezi-title">Hafezi Quran</span>
         </div>
 
-        {/* Selectors */}
-        <div className="hafezi-selectors">
-          <div className="hafezi-select-group">
-            <label>Para (Juz)</label>
-            <select
-              value={selectedJuz}
-              onChange={e => setSelectedJuz(Number(e.target.value))}
-              className="hafezi-select"
-            >
-              {Array.from({ length: 30 }, (_, i) => i + 1).map(j => (
-                <option key={j} value={j}>
-                  {j} - {juzNames[j]}
-                </option>
-              ))}
-            </select>
-          </div>
+        {/* Para (Juz) Selector */}
+        <div className="hafezi-sidebar-section">
+          <label className="hafezi-sidebar-label">PARA (JUZ)</label>
+          <select
+            value={selectedJuz}
+            onChange={e => setSelectedJuz(Number(e.target.value))}
+            className="hafezi-select"
+          >
+            {Array.from({ length: 30 }, (_, i) => i + 1).map(j => (
+              <option key={j} value={j}>
+                {j} - {juzNames[j]}
+              </option>
+            ))}
+          </select>
+        </div>
 
-          {/* Page Selector — 0-based display pages */}
-          <div className="hafezi-select-group">
-            <label>Page</label>
-            <select
-              value={selectedDisplayPage}
-              onChange={e => setSelectedDisplayPage(Number(e.target.value))}
-              className="hafezi-select"
+        {/* Page Selector */}
+        <div className="hafezi-sidebar-section">
+          <label className="hafezi-sidebar-label">PAGE</label>
+          <select
+            value={selectedDisplayPage}
+            onChange={e => setSelectedDisplayPage(Number(e.target.value))}
+            className="hafezi-select"
+          >
+            {uniqueDisplayPages.map(dp => {
+              const pagesWithDp = currentJuz.pages.filter(p => p.displayPage === dp);
+              const suffix = pagesWithDp.length > 1 ? ` (${pagesWithDp.length} pages)` : '';
+              return (
+                <option key={dp} value={dp}>
+                  {dp}{suffix}
+                </option>
+              );
+            })}
+          </select>
+        </div>
+
+        {/* Page Navigation */}
+        <div className="hafezi-sidebar-section">
+          <label className="hafezi-sidebar-label">NAVIGATION</label>
+          <div className="hafezi-page-indicator">
+            <span className="hafezi-page-num">
+              Page {selectedDisplayPage}
+            </span>
+            <span className="hafezi-page-meta">
+              Para {selectedJuz} • {displayPageIdx + 1} of {uniqueDisplayPages.length}
+            </span>
+            {isDualPage && <span className="hafezi-dual-badge">Side by Side</span>}
+          </div>
+          <div className="hafezi-nav-row">
+            <button
+              className="hafezi-nav-btn"
+              onClick={() => { setSelectedJuz(Math.max(1, selectedJuz - 1)); }}
+              disabled={selectedJuz <= 1}
+              title="Previous Para"
             >
-              {uniqueDisplayPages.map(dp => {
-                const pagesWithDp = currentJuz.pages.filter(p => p.displayPage === dp);
-                const suffix = pagesWithDp.length > 1 ? ` (${pagesWithDp.length} pages)` : '';
-                return (
-                  <option key={dp} value={dp}>
-                    {dp}{suffix}
-                  </option>
-                );
-              })}
-            </select>
+              <ChevronsLeft size={16} />
+            </button>
+            <button
+              className="hafezi-nav-btn"
+              onClick={handlePrevPage}
+              disabled={displayPageIdx === 0 && selectedJuz === 1}
+              title="Previous Page"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <button
+              className="hafezi-nav-btn"
+              onClick={handleNextPage}
+              disabled={displayPageIdx === uniqueDisplayPages.length - 1 && selectedJuz === 30}
+              title="Next Page"
+            >
+              <ChevronRight size={16} />
+            </button>
+            <button
+              className="hafezi-nav-btn"
+              onClick={() => { setSelectedJuz(Math.min(30, selectedJuz + 1)); }}
+              disabled={selectedJuz >= 30}
+              title="Next Para"
+            >
+              <ChevronsRight size={16} />
+            </button>
           </div>
         </div>
 
-        {/* View Mode Toggle, Play & Repeat */}
-        <div className="hafezi-controls-right">
+        {/* Divider */}
+        <div className="hafezi-sidebar-divider" />
+
+        {/* View Mode Toggle */}
+        <div className="hafezi-sidebar-section">
+          <label className="hafezi-sidebar-label">VIEW MODE</label>
           <button
             className={`hafezi-view-toggle-btn ${viewMode === 'image' ? 'active' : ''}`}
             onClick={() => setViewMode(viewMode === 'text' ? 'image' : 'text')}
@@ -330,92 +434,143 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
             {viewMode === 'text' ? <Image size={16} /> : <Type size={16} />}
             <span>{viewMode === 'text' ? 'Image' : 'Text'}</span>
           </button>
-          <button
-            className={`hafezi-repeat-btn ${repeatOn ? 'active' : ''}`}
-            onClick={handleToggleRepeat}
-            title={repeatOn ? 'Repeat ON' : 'Repeat OFF'}
-          >
-            <Repeat size={16} />
-          </button>
-          <button
-            className={`hafezi-play-page-btn ${isPagePlaying ? 'playing' : ''}`}
-            onClick={handlePlayPage}
-            title={isPagePlaying ? 'Stop page' : 'Play page'}
-          >
-            {isLoading && isPagePlaying ? (
-              <Loader size={16} className="spin" />
-            ) : isPagePlaying && isPlaying ? (
-              <Pause size={16} />
-            ) : (
-              <Play size={16} />
-            )}
-            <span>{isPagePlaying && isPlaying ? 'Stop' : 'Play Page'}</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Page Navigation */}
-      <div className="hafezi-page-nav">
-        <button
-          className="hafezi-nav-btn"
-          onClick={() => { setSelectedJuz(Math.max(1, selectedJuz - 1)); }}
-          disabled={selectedJuz <= 1}
-          title="Previous Para"
-        >
-          <ChevronsLeft size={16} />
-        </button>
-        <button
-          className="hafezi-nav-btn"
-          onClick={handlePrevPage}
-          disabled={displayPageIdx === 0 && selectedJuz === 1}
-          title="Previous Page"
-        >
-          <ChevronLeft size={16} />
-        </button>
-
-        <div className="hafezi-page-indicator">
-          <span className="hafezi-page-num">
-            Page {selectedDisplayPage}
-            {isDualPage && <span className="hafezi-dual-badge">Side by Side</span>}
-          </span>
-          <span className="hafezi-page-meta">
-            Para {selectedJuz} • Page {displayPageIdx + 1} of {uniqueDisplayPages.length}
-          </span>
         </div>
 
-        <button
-          className="hafezi-nav-btn"
-          onClick={handleNextPage}
-          disabled={displayPageIdx === uniqueDisplayPages.length - 1 && selectedJuz === 30}
-          title="Next Page"
-        >
-          <ChevronRight size={16} />
-        </button>
-        <button
-          className="hafezi-nav-btn"
-          onClick={() => { setSelectedJuz(Math.min(30, selectedJuz + 1)); }}
-          disabled={selectedJuz >= 30}
-          title="Next Para"
-        >
-          <ChevronsRight size={16} />
-        </button>
+        {/* Playback */}
+        <div className="hafezi-sidebar-section">
+          <label className="hafezi-sidebar-label">PAGE PLAYBACK</label>
+          <div className="hafezi-playback-row">
+            <button
+              className={`hafezi-repeat-btn ${repeatOn ? 'active' : ''}`}
+              onClick={handleToggleRepeat}
+              title={repeatOn ? 'Repeat ON' : 'Repeat OFF'}
+            >
+              <Repeat size={16} />
+            </button>
+            <button
+              className={`hafezi-play-page-btn ${isPagePlaying ? 'playing' : ''}`}
+              onClick={handlePlayPage}
+              title={isPagePlaying ? 'Stop page' : 'Play page'}
+            >
+              {isLoading && isPagePlaying ? (
+                <Loader size={16} className="spin" />
+              ) : isPagePlaying && isPlaying ? (
+                <Pause size={16} />
+              ) : (
+                <Play size={16} />
+              )}
+              <span>{isPagePlaying && isPlaying ? 'Stop' : 'Play Page'}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Spacer pushes player to bottom */}
+        <div className="hafezi-sidebar-spacer" />
+
+        {/* ---- Embedded Audio Player ---- */}
+        {currentAyah && (
+          <div className="hafezi-player">
+            {/* Player Info (top) */}
+            <div className="hafezi-player-info">
+              <div className="hafezi-player-text">
+                <span className="hafezi-player-surah">{surahName}</span>
+                <span className="hafezi-player-ayah">
+                  Ayah {currentAyah.numberInSurah} • Juz {currentAyah.juz} • Page {currentAyah.page}
+                </span>
+              </div>
+              <button
+                className="hafezi-player-goto-btn"
+                onClick={handleGoToCurrentAyah}
+                title="Go to this ayah's page"
+              >
+                <BookMarked size={15} />
+              </button>
+            </div>
+
+            {/* Progress bar */}
+            <div className="hafezi-player-progress">
+              <div
+                className="hafezi-player-progress-fill"
+                style={{ width: `${playerProgress}%` }}
+              />
+              <input
+                type="range"
+                min={0}
+                max={duration || 0}
+                value={currentTime}
+                onChange={e => onSeek(Number(e.target.value))}
+                className="hafezi-player-progress-input"
+              />
+            </div>
+
+            {/* Time */}
+            <div className="hafezi-player-time">
+              <span>{formatTime(currentTime)}</span>
+              <span>{formatTime(duration)}</span>
+            </div>
+
+            {/* Controls (bottom) */}
+            <div className="hafezi-player-controls">
+              <button className="hafezi-player-btn" onClick={onPrevious} title="Previous Ayah">
+                <SkipBack size={16} />
+              </button>
+              <button
+                className="hafezi-player-btn hafezi-player-btn-main"
+                onClick={onTogglePlay}
+                title={isPlaying ? 'Pause' : 'Play'}
+              >
+                {isLoading ? (
+                  <Loader size={20} className="spin" />
+                ) : isPlaying ? (
+                  <Pause size={20} />
+                ) : (
+                  <Play size={20} />
+                )}
+              </button>
+              <button className="hafezi-player-btn" onClick={onNext} title="Next Ayah">
+                <SkipForward size={16} />
+              </button>
+              <button className="hafezi-player-btn" onClick={onStop} title="Stop">
+                <Square size={14} />
+              </button>
+            </div>
+
+            {/* Volume slider */}
+            <div className="hafezi-player-volume-slider">
+              <button className="hafezi-player-vol-btn" onClick={handleToggleMute} title={volume === 0 ? 'Unmute' : 'Mute'}>
+                <VolumeIcon size={14} />
+              </button>
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.02}
+                value={volume}
+                onChange={e => onVolumeChange(Number(e.target.value))}
+              />
+              <span className="hafezi-player-volume-pct">{Math.round(volume * 100)}%</span>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Quran Page(s) */}
-      <div className={`hafezi-page-wrapper ${isDualPage ? 'dual' : ''}`} ref={pageContentRef}>
-        {currentPages.map((page, idx) => (
-          <SinglePage
-            key={page.pageIndex}
-            page={page}
-            selectedJuz={selectedJuz}
-            currentAyah={currentAyah}
-            isPlaying={isPlaying}
-            onPlayAyah={onPlayAyah}
-            isDualPage={isDualPage}
-            viewMode={viewMode}
-            pagePosition={isDualPage ? (idx === 0 ? 'right' : 'left') : undefined}
-          />
-        ))}
+      {/* ---- Right: Quran Page Area ---- */}
+      <div className="hafezi-page-area" ref={pageContentRef}>
+        <div className={`hafezi-page-wrapper ${isDualPage ? 'dual' : ''}`}>
+          {currentPages.map((page, idx) => (
+            <SinglePage
+              key={page.pageIndex}
+              page={page}
+              selectedJuz={selectedJuz}
+              currentAyah={currentAyah}
+              isPlaying={isPlaying}
+              onPlayAyah={onPlayAyah}
+              isDualPage={isDualPage}
+              viewMode={viewMode}
+              pagePosition={isDualPage ? (idx === 0 ? 'right' : 'left') : undefined}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );

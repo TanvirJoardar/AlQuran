@@ -251,6 +251,15 @@ function App() {
               onStop={player.stop}
               mappingsVersion={mappingsVersion}
               jumpToAyah={hafeziJumpAyah}
+              currentTime={player.currentTime}
+              duration={player.duration}
+              volume={player.volume}
+              surahName={currentSurahName}
+              onTogglePlay={player.togglePlay}
+              onSeek={player.seek}
+              onPrevious={handlePreviousAyah}
+              onNext={handleNextAyah}
+              onVolumeChange={player.setVolume}
             />
           ) : viewMode === 'recitation' ? (
             <RecitationPanel
@@ -275,23 +284,25 @@ function App() {
         </main>
       </div>
 
-      {/* Audio Player */}
-      <AudioPlayerBar
-        isPlaying={player.isPlaying}
-        currentAyah={player.currentAyah}
-        currentTime={player.currentTime}
-        duration={player.duration}
-        isLoading={player.isLoading}
-        surahName={currentSurahName}
-        volume={player.volume}
-        onTogglePlay={player.togglePlay}
-        onStop={player.stop}
-        onSeek={player.seek}
-        onPrevious={handlePreviousAyah}
-        onNext={handleNextAyah}
-        onGoToPage={player.currentAyah ? () => handleSetViewMode('hafezi') : undefined}
-        onVolumeChange={player.setVolume}
-      />
+      {/* Audio Player - hidden in Hafezi mode (player is in sidebar) */}
+      {viewMode !== 'hafezi' && (
+        <AudioPlayerBar
+          isPlaying={player.isPlaying}
+          currentAyah={player.currentAyah}
+          currentTime={player.currentTime}
+          duration={player.duration}
+          isLoading={player.isLoading}
+          surahName={currentSurahName}
+          volume={player.volume}
+          onTogglePlay={player.togglePlay}
+          onStop={player.stop}
+          onSeek={player.seek}
+          onPrevious={handlePreviousAyah}
+          onNext={handleNextAyah}
+          onGoToPage={player.currentAyah ? () => handleSetViewMode('hafezi') : undefined}
+          onVolumeChange={player.setVolume}
+        />
+      )}
     </div>
   );
 }

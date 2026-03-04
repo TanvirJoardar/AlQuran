@@ -1138,28 +1138,33 @@ body {
 
 .hafezi-quran {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   height: 100%;
   overflow: hidden;
 }
 
-/* ---- Controls Bar ---- */
-.hafezi-controls {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 20px;
+/* ============================================
+   LEFT SIDEBAR / CONTROL PANEL
+   ============================================ */
+
+.hafezi-sidebar {
+  width: 30%;
+  min-width: 30%;
   background: var(--bg-card);
-  border-bottom: 1px solid var(--border);
-  gap: 16px;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 0;
   flex-shrink: 0;
-  flex-wrap: wrap;
 }
 
-.hafezi-controls-left {
+.hafezi-sidebar-header {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--border-light);
 }
 
 .hafezi-controls-icon {
@@ -1168,32 +1173,34 @@ body {
 
 .hafezi-title {
   font-weight: 700;
-  font-size: 1rem;
+  font-size: 1.05rem;
   color: var(--primary);
 }
 
-.hafezi-selectors {
+.hafezi-sidebar-section {
+  padding: 14px 20px;
   display: flex;
-  gap: 12px;
-  align-items: center;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.hafezi-select-group {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.hafezi-select-group label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--text-light);
+.hafezi-sidebar-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.8px;
+}
+
+.hafezi-sidebar-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border), transparent);
+  margin: 4px 20px;
 }
 
 .hafezi-select {
-  padding: 6px 28px 6px 12px;
+  width: 100%;
+  padding: 8px 30px 8px 12px;
   border: 1.5px solid var(--border);
   border-radius: var(--radius-sm);
   background: white;
@@ -1205,8 +1212,7 @@ body {
   appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%236b6b6b' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 8px center;
-  max-width: 200px;
+  background-position: right 10px center;
 }
 
 .hafezi-select:focus {
@@ -1214,15 +1220,83 @@ body {
   box-shadow: 0 0 0 3px var(--primary-glow);
 }
 
-.hafezi-controls-right {
+/* Page indicator inside sidebar */
+.hafezi-page-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: linear-gradient(135deg, rgba(27, 94, 59, 0.06), rgba(201, 168, 76, 0.06));
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  gap: 2px;
+}
+
+.hafezi-page-num {
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--primary);
+}
+
+.hafezi-page-meta {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.hafezi-dual-badge {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 8px;
+  background: #e65100;
+  color: #fff;
+  font-size: 0.6rem;
+  border-radius: 4px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+/* Nav buttons row */
+.hafezi-nav-row {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+}
+
+.hafezi-nav-btn {
+  width: 38px;
+  height: 34px;
   display: flex;
   align-items: center;
+  justify-content: center;
+  background: white;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  cursor: pointer;
+  transition: var(--transition);
+  flex: 1;
+}
+
+.hafezi-nav-btn:hover:not(:disabled) {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-glow);
+}
+
+.hafezi-nav-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* Playback row */
+.hafezi-playback-row {
+  display: flex;
   gap: 8px;
+  align-items: center;
 }
 
 .hafezi-repeat-btn {
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1232,6 +1306,7 @@ body {
   color: var(--text-muted);
   cursor: pointer;
   transition: var(--transition);
+  flex-shrink: 0;
 }
 
 .hafezi-repeat-btn:hover {
@@ -1249,7 +1324,7 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 18px;
+  padding: 8px 16px;
   background: var(--gold);
   color: var(--primary-dark);
   border: none;
@@ -1259,6 +1334,8 @@ body {
   cursor: pointer;
   transition: var(--transition);
   box-shadow: 0 2px 8px rgba(201, 168, 76, 0.3);
+  flex: 1;
+  justify-content: center;
 }
 
 .hafezi-play-page-btn:hover {
@@ -1273,70 +1350,257 @@ body {
   box-shadow: 0 2px 8px rgba(27, 94, 59, 0.3);
 }
 
-/* ---- Page Navigation ---- */
-.hafezi-page-nav {
+/* View toggle */
+.hafezi-view-toggle-btn {
   display: flex;
   align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: transparent;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-xl);
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  width: 100%;
   justify-content: center;
-  padding: 10px 20px;
-  gap: 8px;
-  background: var(--bg-sidebar);
-  border-bottom: 1px solid var(--border-light);
+}
+
+.hafezi-view-toggle-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: rgba(27, 94, 59, 0.06);
+}
+
+.hafezi-view-toggle-btn.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
+
+/* Spacer to push player to bottom of sidebar */
+.hafezi-sidebar-spacer {
+  flex: 1;
+}
+
+/* ============================================
+   EMBEDDED AUDIO PLAYER IN SIDEBAR
+   ============================================ */
+
+.hafezi-player {
+  border-top: 2px solid var(--gold);
+  background: linear-gradient(180deg, rgba(201, 168, 76, 0.06) 0%, var(--bg-card) 100%);
+  padding: 14px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   flex-shrink: 0;
 }
 
-.hafezi-nav-btn {
+/* Player info (top) */
+.hafezi-player-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.hafezi-player-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.hafezi-player-surah {
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: var(--primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hafezi-player-ayah {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Go to current ayah page button */
+.hafezi-player-goto-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background: transparent;
+  border: 1.5px solid var(--primary);
+  border-radius: var(--radius-sm);
+  color: var(--primary);
+  cursor: pointer;
+  transition: var(--transition);
+  flex-shrink: 0;
+}
+
+.hafezi-player-goto-btn:hover {
+  background: var(--primary);
+  color: white;
+  transform: scale(1.05);
+}
+
+/* Progress */
+.hafezi-player-progress {
+  position: relative;
+  height: 5px;
+  background: var(--border-light);
+  border-radius: 3px;
+  overflow: visible;
+}
+
+.hafezi-player-progress-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary), var(--gold));
+  border-radius: 3px;
+  transition: width 0.1s linear;
+}
+
+.hafezi-player-progress-input {
+  position: absolute;
+  top: -4px;
+  left: 0;
+  width: 100%;
+  height: 14px;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 2;
+}
+
+/* Time row */
+.hafezi-player-time {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  margin-top: -4px;
+}
+
+/* Controls */
+.hafezi-player-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.hafezi-player-btn {
   width: 34px;
   height: 34px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: white;
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius-sm);
+  background: transparent;
+  border: none;
   color: var(--text);
   cursor: pointer;
+  border-radius: 50%;
   transition: var(--transition);
 }
 
-.hafezi-nav-btn:hover:not(:disabled) {
-  border-color: var(--primary);
-  color: var(--primary);
+.hafezi-player-btn:hover {
   background: var(--primary-glow);
-}
-
-.hafezi-nav-btn:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
-
-.hafezi-page-indicator {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-width: 160px;
-}
-
-.hafezi-page-num {
-  font-weight: 700;
-  font-size: 0.95rem;
   color: var(--primary);
 }
 
-.hafezi-page-meta {
-  font-size: 0.72rem;
-  color: var(--text-muted);
+.hafezi-player-btn-main {
+  width: 42px;
+  height: 42px;
+  background: var(--primary);
+  color: white;
+  border-radius: 50%;
+  margin: 0 2px;
 }
 
-/* ---- Page Wrapper ---- */
-.hafezi-page-wrapper {
+.hafezi-player-btn-main:hover {
+  background: var(--primary-light);
+  color: white;
+  transform: scale(1.06);
+}
+
+/* Volume slider (inline) */
+.hafezi-player-volume-slider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px;
+}
+
+.hafezi-player-vol-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 4px;
+  transition: var(--transition);
+  flex-shrink: 0;
+}
+
+.hafezi-player-vol-btn:hover {
+  color: var(--primary);
+}
+
+.hafezi-player-volume-slider input[type="range"] {
+  flex: 1;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--border);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+  accent-color: var(--primary);
+}
+
+.hafezi-player-volume-pct {
+  font-size: 0.66rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  min-width: 28px;
+  text-align: right;
+}
+
+/* ============================================
+   RIGHT: QURAN PAGE AREA
+   ============================================ */
+
+.hafezi-page-area {
   flex: 1;
   overflow-y: auto;
   display: flex;
   justify-content: center;
+  align-items: flex-start;
   padding: 20px;
-  /* padding-bottom: calc(var(--player-height) + 30px); */
   background: var(--bg);
+}
+
+/* ---- Page Wrapper ---- */
+.hafezi-page-wrapper {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  max-width: 780px;
 }
 
 /* ---- The Quran Page ---- */
@@ -1530,43 +1794,218 @@ body {
   margin: 0 auto 8px;
 }
 
+/* Image view in Hafezi */
+.hafezi-image-view {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  padding: 16px;
+}
+
+.hafezi-page-image {
+  max-width: 100%;
+  max-height: 72vh;
+  border-radius: 8px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+  object-fit: contain;
+}
+
+.hafezi-no-image {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 60px 20px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.hafezi-no-image p {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.hafezi-no-image span {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+/* ---- DUAL PAGE (SIDE BY SIDE) ---- */
+.hafezi-page-wrapper.dual {
+  display: flex;
+  gap: 12px;
+  flex-direction: row-reverse;
+  max-width: 1200px;
+}
+
+.hafezi-page-half.page-right {
+  border-left: 1px solid rgba(139, 90, 43, 0.25);
+  padding-left: 8px;
+}
+
+.hafezi-page-half.page-left {
+  border-right: 1px solid rgba(139, 90, 43, 0.25);
+  padding-right: 8px;
+}
+
+.hafezi-page-half {
+  flex: 1;
+  min-width: 0;
+}
+
+.hafezi-page-half .hafezi-page-content {
+  font-size: 0.9em;
+}
+
 /* ---- Hafezi Responsive ---- */
-@media (max-width: 768px) {
-  .hafezi-controls {
+
+/* Tablets: collapse sidebar into a top bar */
+@media (max-width: 900px) {
+  .hafezi-quran {
+    flex-direction: column;
+  }
+
+  .hafezi-sidebar {
+    width: 100%;
+    min-width: unset;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
     padding: 10px 12px;
     gap: 10px;
+    overflow-y: visible;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .hafezi-sidebar-header {
+    padding: 0;
+    border-bottom: none;
+  }
+
+  .hafezi-sidebar-section {
+    padding: 0;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .hafezi-sidebar-label {
+    display: none;
+  }
+
+  .hafezi-sidebar-divider {
+    display: none;
+  }
+
+  .hafezi-sidebar-spacer {
+    display: none;
+  }
+
+  .hafezi-page-indicator {
+    padding: 6px 10px;
+    flex-direction: row;
+    gap: 6px;
+  }
+
+  .hafezi-nav-row {
+    gap: 4px;
+  }
+
+  .hafezi-nav-btn {
+    width: 32px;
+    height: 30px;
+    flex: 0;
+  }
+
+  .hafezi-select {
+    width: auto;
+    max-width: 150px;
+    padding: 6px 26px 6px 10px;
+    font-size: 0.8rem;
+  }
+
+  .hafezi-play-page-btn {
+    padding: 6px 14px;
+    font-size: 0.8rem;
+    flex: 0;
+  }
+
+  .hafezi-view-toggle-btn {
+    width: auto;
+    padding: 6px 12px;
+    font-size: 0.78rem;
+  }
+
+  /* Player becomes a bottom bar on tablets */
+  .hafezi-player {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 200;
+    border-top: 1px solid var(--border);
+    border-radius: 0;
+    padding: 8px 16px 10px;
+    background: rgba(255, 253, 247, 0.97);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.06);
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .hafezi-player-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .hafezi-player-progress {
+    width: 100%;
+    order: -1;
+  }
+
+  .hafezi-player-time {
+    display: none;
+  }
+
+  .hafezi-player-volume-slider {
+    display: none;
+  }
+
+  .hafezi-page-area {
+    padding: 12px 8px;
+    padding-bottom: 100px;
+  }
+
+  .hafezi-page-wrapper.dual {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .hafezi-page-half {
+    flex: none;
+    width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .hafezi-sidebar {
+    padding: 8px 10px;
+    gap: 8px;
+  }
+
+  .hafezi-sidebar-header {
+    display: none;
   }
 
   .hafezi-title {
     display: none;
-  }
-
-  .hafezi-controls-icon {
-    display: none;
-  }
-
-  .hafezi-selectors {
-    gap: 8px;
-  }
-
-  .hafezi-select-group label {
-    display: none;
-  }
-
-  .hafezi-select {
-    max-width: 130px;
-    font-size: 0.8rem;
-    padding: 5px 24px 5px 8px;
-  }
-
-  .hafezi-play-page-btn {
-    padding: 6px 12px;
-    font-size: 0.8rem;
-  }
-
-  .hafezi-page-wrapper {
-    padding: 12px 8px;
-    padding-bottom: calc(var(--player-height) + 20px);
   }
 
   .hafezi-page {
@@ -1598,21 +2037,12 @@ body {
     font-size: 0.85rem;
     padding: 3px 14px;
   }
-
-  .hafezi-page-nav {
-    padding: 8px 12px;
-    gap: 6px;
-  }
 }
 
 @media (max-width: 480px) {
-  .hafezi-controls {
-    padding: 8px 8px;
-  }
-
-  .hafezi-selectors {
+  .hafezi-sidebar {
+    padding: 6px 8px;
     gap: 6px;
-    flex-wrap: wrap;
   }
 
   .hafezi-select {
@@ -1629,10 +2059,6 @@ body {
     padding: 4px 10px 8px;
   }
 
-  .hafezi-controls-right {
-    gap: 4px;
-  }
-
   .hafezi-repeat-btn {
     width: 30px;
     height: 30px;
@@ -1642,6 +2068,10 @@ body {
     padding: 5px 10px;
     font-size: 0.75rem;
     gap: 4px;
+  }
+
+  .hafezi-page-indicator {
+    display: none;
   }
 }
 
@@ -2387,77 +2817,6 @@ body {
 }
 
 /* ============================== */
-/* == VIEW MODE TOGGLE BUTTON  == */
-/* ============================== */
-
-.hafezi-view-toggle-btn {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 7px 14px;
-  background: transparent;
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius-xl);
-  color: var(--text-muted);
-  font-size: 0.8rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: var(--transition);
-}
-
-.hafezi-view-toggle-btn:hover {
-  border-color: var(--primary);
-  color: var(--primary);
-  background: rgba(27, 94, 59, 0.06);
-}
-
-.hafezi-view-toggle-btn.active {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: white;
-}
-
-/* Image view in Hafezi */
-.hafezi-image-view {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 400px;
-  padding: 16px;
-}
-
-.hafezi-page-image {
-  max-width: 100%;
-  max-height: 62vh;
-  border-radius: 8px;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
-  object-fit: contain;
-}
-
-.hafezi-no-image {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 60px 20px;
-  color: var(--text-muted);
-  text-align: center;
-}
-
-.hafezi-no-image p {
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin: 0;
-  color: var(--text-secondary);
-}
-
-.hafezi-no-image span {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-}
-
-/* ============================== */
 /* == ADMIN IMAGE UPLOAD        == */
 /* ============================== */
 
@@ -2598,61 +2957,6 @@ body {
   color: #666;
   font-weight: 700;
 }
-
-/* ============================== */
-/* == DUAL PAGE (SIDE BY SIDE) == */
-/* ============================== */
-
-.hafezi-page-wrapper.dual {
-  display: flex;
-  gap: 12px;
-  flex-direction: row-reverse; /* first page = right side (Quran layout) */
-}
-
-.hafezi-page-half.page-right {
-  border-left: 1px solid rgba(139, 90, 43, 0.25);
-  padding-left: 8px;
-}
-
-.hafezi-page-half.page-left {
-  border-right: 1px solid rgba(139, 90, 43, 0.25);
-  padding-right: 8px;
-}
-
-.hafezi-page-half {
-  flex: 1;
-  min-width: 0;
-}
-
-.hafezi-page-half .hafezi-page-content {
-  font-size: 0.9em;
-}
-
-.hafezi-dual-badge {
-  display: inline-block;
-  margin-left: 10px;
-  padding: 2px 8px;
-  background: #e65100;
-  color: #fff;
-  font-size: 0.65rem;
-  border-radius: 4px;
-  font-weight: 700;
-  text-transform: uppercase;
-  vertical-align: middle;
-}
-
-@media (max-width: 900px) {
-  .hafezi-page-wrapper.dual {
-    flex-direction: column; /* top = first (right) page on mobile */
-    gap: 16px;
-  }
-
-  .hafezi-page-half {
-    flex: none;
-    width: 100%;
-  }
-}
-
 
 /* ======================================= */
 /* == RECITATION PANEL =================== */
