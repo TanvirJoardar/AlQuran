@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { QuranData, Surah } from './types/quran';
 import { SurahList } from './components/SurahList';
 import { SurahView } from './components/SurahView';
@@ -25,6 +25,16 @@ function App() {
   const [dbReady, setDbReady] = useState(false);
 
   const player = useAudioPlayer();
+
+  // Derive the surah name from whichever ayah is currently playing,
+  // so it updates correctly across all views (Surah, Hafezi, Recitation).
+  const currentSurahName = useMemo(() => {
+    if (!player.currentAyah || !quranData) return undefined;
+    const surah = quranData.data.surahs.find(s =>
+      s.ayahs.some(a => a.number === player.currentAyah!.number)
+    );
+    return surah?.englishName;
+  }, [player.currentAyah, quranData]);
 
   // Initialize database
   useEffect(() => {
@@ -263,7 +273,7 @@ function App() {
         currentTime={player.currentTime}
         duration={player.duration}
         isLoading={player.isLoading}
-        surahName={selectedSurah?.englishName}
+        surahName={currentSurahName}
         onTogglePlay={player.togglePlay}
         onStop={player.stop}
         onSeek={player.seek}
