@@ -5,12 +5,13 @@ import { SurahView } from './components/SurahView';
 import { AudioPlayerBar } from './components/AudioPlayerBar';
 import { HafeziQuran } from './components/HafeziQuran';
 import { AdminPanel } from './components/AdminPanel';
+import { RecitationPanel } from './components/RecitationPanel';
 import { useAudioPlayer } from './hooks/useAudioPlayer';
 import { initDatabase, seedDefaultMappings } from './services/database';
-import { BookOpen, Menu, X, BookMarked, LayoutGrid, Settings } from 'lucide-react';
+import { BookOpen, Menu, X, BookMarked, LayoutGrid, Settings, Headphones } from 'lucide-react';
 import './App.css';
 
-type ViewMode = 'surah' | 'hafezi' | 'admin';
+type ViewMode = 'surah' | 'hafezi' | 'recitation' | 'admin';
 
 function App() {
   const [quranData, setQuranData] = useState<QuranData | null>(null);
@@ -154,6 +155,13 @@ function App() {
             <span>Hafezi Quran</span>
           </button>
           <button
+            className={`header-tab ${viewMode === 'recitation' ? 'active' : ''}`}
+            onClick={() => setViewMode('recitation')}
+          >
+            <Headphones size={16} />
+            <span>Recitation</span>
+          </button>
+          <button
             className={`header-tab ${viewMode === 'admin' ? 'active' : ''}`}
             onClick={() => setViewMode('admin')}
           >
@@ -224,6 +232,19 @@ function App() {
               onSetAutoPlayNext={player.setAutoPlayNext}
               onStop={player.stop}
               mappingsVersion={mappingsVersion}
+            />
+          ) : viewMode === 'recitation' ? (
+            <RecitationPanel
+              surahs={quranData?.data.surahs || []}
+              currentAyah={player.currentAyah}
+              isPlaying={player.isPlaying}
+              isLoading={player.isLoading}
+              mappingsVersion={mappingsVersion}
+              onPlay={player.playSurah}
+              onStop={player.stop}
+              onSetRepeat={player.setRepeatMode}
+              onSetAyahsList={player.setAyahsList}
+              onSetAutoPlayNext={player.setAutoPlayNext}
             />
           ) : (
             <AdminPanel
