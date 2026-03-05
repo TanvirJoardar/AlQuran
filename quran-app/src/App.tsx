@@ -52,12 +52,14 @@ function App() {
     player.playSurah(ayahs);
   }, [player, hafeziPlayer]);
 
-  const handleSetViewMode = useCallback((mode: ViewMode) => {
+  const handleSetViewMode = useCallback((mode: ViewMode, jumpTo?: Ayah | null) => {
     if (mode === 'hafezi') {
-      setHafeziJumpAyah(hafeziPlayer.currentAyah);
+      // Prefer an explicitly provided ayah (e.g. from the bottom player),
+      // otherwise fall back to the main player's current ayah.
+      setHafeziJumpAyah(jumpTo ?? player.currentAyah ?? null);
     }
     setViewMode(mode);
-  }, [hafeziPlayer.currentAyah]);
+  }, [player.currentAyah]);
 
   // Surah name for the main (surah/recitation) player
   const currentSurahName = useMemo(() => {
@@ -333,7 +335,7 @@ function App() {
           onSeek={player.seek}
           onPrevious={handlePreviousAyah}
           onNext={handleNextAyah}
-          onGoToPage={player.currentAyah ? () => handleSetViewMode('hafezi') : undefined}
+          onGoToPage={player.currentAyah ? () => handleSetViewMode('hafezi', player.currentAyah) : undefined}
           onVolumeChange={player.setVolume}
         />
       )}

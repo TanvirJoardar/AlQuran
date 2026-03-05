@@ -635,6 +635,7 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
               pagePosition={
                 isDualPage ? (idx === 0 ? "right" : "left") : undefined
               }
+              jumpToAyah={jumpToAyah}
             />
           ))}
         </div>
@@ -654,6 +655,7 @@ interface SinglePageProps {
   isDualPage: boolean;
   viewMode: "text" | "image";
   pagePosition?: "right" | "left";
+  jumpToAyah?: Ayah | null;
 }
 
 const SinglePage: React.FC<SinglePageProps> = ({
@@ -665,6 +667,7 @@ const SinglePage: React.FC<SinglePageProps> = ({
   isDualPage,
   viewMode,
   pagePosition,
+  jumpToAyah,
 }) => {
 
   // Normalize Arabic text for better comparison (e.g. to detect Bismillah)
@@ -740,7 +743,7 @@ const SinglePage: React.FC<SinglePageProps> = ({
       }
 
       const ayahText = `${ayah.text} ﴿${toArabicNumber(ayah.numberInSurah)}﴾`;
-      const isActive = currentAyah?.number === ayah.number;
+      const isActive = currentAyah?.number === ayah.number || jumpToAyah?.number === ayah.number;
 
       if (
         lines.length === 0 ||
@@ -760,7 +763,7 @@ const SinglePage: React.FC<SinglePageProps> = ({
     });
 
     return lines;
-  }, [page, currentAyah, isPlaying, surahStartsOnPage]);
+  }, [page, currentAyah, isPlaying, surahStartsOnPage, jumpToAyah]);
 
   return (
     <div
@@ -828,7 +831,7 @@ const SinglePage: React.FC<SinglePageProps> = ({
                   <span
                     key={`${part.ayah.number}-${partIdx}`}
                     className={`hafezi-ayah-text ${
-                      currentAyah?.number === part.ayah.number ? "active" : ""
+                      (currentAyah?.number === part.ayah.number || jumpToAyah?.number === part.ayah.number) ? "active" : ""
                     } ${part.isPlaying ? "playing" : ""}`}
                     onClick={() => onPlayAyah(part.ayah)}
                     title={`Ayah ${part.ayah.numberInSurah}`}
