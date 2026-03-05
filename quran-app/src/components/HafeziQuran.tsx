@@ -135,6 +135,7 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
   const [viewMode, setViewMode] = useState<"text" | "image">("text");
   const [prevVolume, setPrevVolume] = useState(1);
   const [fitToHeight, setFitToHeight] = useState(false);
+  const [dualPageView, setDualPageView] = useState(false);
   const pageContentRef = useRef<HTMLDivElement>(null);
 
   const playerProgress = duration > 0 ? (currentTime / duration) * 100 : 0;
@@ -269,10 +270,40 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
     );
   }, [currentJuz, selectedDisplayPage]);
 
+  // In dual-page view, always show an even–odd spread:
+  // even page on the RIGHT, odd page on the LEFT (like a physical book).
+  // If user selects page 3 (odd): show page 2 (right) + page 3 (left)
+  // If user selects page 10 (even): show page 10 (right) + page 11 (left)
+  const visiblePages = useMemo(() => {
+    if (!dualPageView || !currentJuz) return currentPages;
+
+    let evenPage: number; // will be on the right
+    let oddPage: number;  // will be on the left
+
+    if (selectedDisplayPage % 2 === 0) {
+      // Selected page is even → it goes right, next (odd) goes left
+      evenPage = selectedDisplayPage;
+      oddPage = selectedDisplayPage + 1;
+    } else {
+      // Selected page is odd → previous (even) goes right, it goes left
+      evenPage = selectedDisplayPage - 1;
+      oddPage = selectedDisplayPage;
+    }
+
+    const rightPages = evenPage > 0
+      ? currentJuz.pages.filter(p => p.displayPage === evenPage)
+      : [];
+    const leftPages = currentJuz.pages.filter(p => p.displayPage === oddPage);
+
+    // Combine: right page first (rendered first in RTL row-reverse), then left
+    const pages = [...rightPages, ...leftPages];
+    return pages.length > 0 ? pages : currentPages;
+  }, [dualPageView, currentPages, currentJuz, selectedDisplayPage]);
+
   // Combined ayahs for playback (all pages in view)
   const allPageAyahs = useMemo(() => {
-    return currentPages.flatMap((p) => p.ayahs);
-  }, [currentPages]);
+    return visiblePages.flatMap((p) => p.ayahs);
+  }, [visiblePages]);
 
   // Reset display page when juz changes
   useEffect(() => {
@@ -309,19 +340,24 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
   };
 
   const handlePrevPage = () => {
+    const step = dualPageView ? 2 : 1;
     const idx = uniqueDisplayPages.indexOf(selectedDisplayPage);
-    if (idx > 0) {
-      setSelectedDisplayPage(uniqueDisplayPages[idx - 1]);
+    if (idx - step >= 0) {
+      setSelectedDisplayPage(uniqueDisplayPages[idx - step]);
+    } else if (idx > 0) {
+      setSelectedDisplayPage(uniqueDisplayPages[0]);
     } else if (selectedJuz > 1) {
       setSelectedJuz(selectedJuz - 1);
-      // will reset to first page via useEffect
     }
   };
 
   const handleNextPage = () => {
+    const step = dualPageView ? 2 : 1;
     const idx = uniqueDisplayPages.indexOf(selectedDisplayPage);
-    if (idx < uniqueDisplayPages.length - 1) {
-      setSelectedDisplayPage(uniqueDisplayPages[idx + 1]);
+    if (idx + step < uniqueDisplayPages.length) {
+      setSelectedDisplayPage(uniqueDisplayPages[idx + step]);
+    } else if (idx < uniqueDisplayPages.length - 1) {
+      setSelectedDisplayPage(uniqueDisplayPages[uniqueDisplayPages.length - 1]);
     } else if (selectedJuz < 30) {
       setSelectedJuz(selectedJuz + 1);
     }
@@ -356,8 +392,11 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
 
   if (currentPages.length === 0) return null;
 
-  const isDualPage = currentPages.length > 1;
+  const isDualPage = visiblePages.length > 1;
   const displayPageIdx = uniqueDisplayPages.indexOf(selectedDisplayPage);
+  // Derive the display page range shown in dual view
+  const dualRightPage = isDualPage ? visiblePages[0].displayPage : null;
+  const dualLeftPage = isDualPage ? visiblePages[visiblePages.length - 1].displayPage : null;
 
   return (
     <div className={`hafezi-quran${fitToHeight ? ' fit-to-height' : ''}`}>
@@ -458,13 +497,18 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
         <div className="hafezi-sidebar-section">
           <label className="hafezi-sidebar-label">NAVIGATION</label>
           <div className="hafezi-page-indicator">
-            <span className="hafezi-page-num">Page {selectedDisplayPage}</span>
+            <span className="hafezi-page-num">
+              {dualRightPage !== null && dualLeftPage !== null && dualRightPage !== dualLeftPage
+                ? `Pages ${dualRightPage}–${dualLeftPage}`
+                : `Page ${selectedDisplayPage}`
+              }
+            </span>
             <span className="hafezi-page-meta">
               Para {selectedJuz} • {displayPageIdx + 1} of{" "}
               {uniqueDisplayPages.length}
             </span>
             {isDualPage && (
-              <span className="hafezi-dual-badge">Side by Side</span>
+              <span className="hafezi-dual-badge">{dualPageView ? "Dual View" : "Side by Side"}</span>
             )}
           </div>
           <div className="hafezi-nav-row">
@@ -535,6 +579,14 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
           >
             {fitToHeight ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
             <span>{fitToHeight ? 'Scroll' : 'Fit'}</span>
+          </button>
+          <button
+            className={`hafezi-view-toggle-btn ${dualPageView ? "active" : ""}`}
+            onClick={() => setDualPageView(!dualPageView)}
+            title={dualPageView ? "Switch to Single Page view" : "Switch to Dual Page (book spread) view"}
+          >
+            <BookOpen size={16} />
+            <span>{dualPageView ? '1 Page' : '2 Pages'}</span>
           </button>
         </div>
 
@@ -678,7 +730,7 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
       {/* ---- Right: Quran Page Area ---- */}
       <div className="hafezi-page-area" ref={pageContentRef}>
         <div className={`hafezi-page-wrapper ${isDualPage ? "dual" : ""}`}>
-          {currentPages.map((page, idx) => (
+          {visiblePages.map((page, idx) => (
             <SinglePage
               key={page.pageIndex}
               page={page}
