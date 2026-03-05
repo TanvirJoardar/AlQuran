@@ -23,6 +23,7 @@ import {
   Volume1,
   VolumeX,
   BookMarked,
+  Link2,
 } from "lucide-react";
 
 type EnrichedAyah = Ayah & {
@@ -128,6 +129,7 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
   onVolumeChange,
   sidebarOpen = true,
 }) => {
+  const rootRef = useRef<HTMLDivElement>(null);
   const [selectedJuz, setSelectedJuz] = useState(1);
   const [selectedDisplayPage, setSelectedDisplayPage] = useState(0);
   const [repeatOn, setRepeatOn] = useState(false);
@@ -136,6 +138,7 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
   const [prevVolume, setPrevVolume] = useState(1);
   const [fitToHeight, setFitToHeight] = useState(false);
   const [dualPageView, setDualPageView] = useState(false);
+  const [paraContinuous, setParaContinuous] = useState(true);
   const pageContentRef = useRef<HTMLDivElement>(null);
 
   const playerProgress = duration > 0 ? (currentTime / duration) * 100 : 0;
@@ -274,6 +277,13 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
   // even page on the RIGHT, odd page on the LEFT (like a physical book).
   // If user selects page 3 (odd): show page 2 (right) + page 3 (left)
   // If user selects page 10 (even): show page 10 (right) + page 11 (left)
+  //
+  // Special case – 1st page of a para (displayPage=1, always odd):
+  // evenPage would be 0 (non-existent), so show the last page of the
+  // previous para on the RIGHT, and the 1st page of the current para on LEFT.
+  //
+  // Para Continuous: when ON and the selected page is the last page of a para
+  // (which is even), the left side shows the 1st page of the next para.
   const visiblePages = useMemo(() => {
     if (!dualPageView || !currentJuz) return currentPages;
 
@@ -281,24 +291,57 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
     let oddPage: number;  // will be on the left
 
     if (selectedDisplayPage % 2 === 0) {
-      // Selected page is even → it goes right, next (odd) goes left
       evenPage = selectedDisplayPage;
       oddPage = selectedDisplayPage + 1;
     } else {
-      // Selected page is odd → previous (even) goes right, it goes left
       evenPage = selectedDisplayPage - 1;
       oddPage = selectedDisplayPage;
     }
 
-    const rightPages = evenPage > 0
+    let rightPages = evenPage > 0
       ? currentJuz.pages.filter(p => p.displayPage === evenPage)
       : [];
-    const leftPages = currentJuz.pages.filter(p => p.displayPage === oddPage);
+    let leftPages = currentJuz.pages.filter(p => p.displayPage === oddPage);
+
+    // Rule: when on the 1st page of a para (displayPage=1, which is odd),
+    // evenPage === 0 so rightPages is empty. Show the last page of the
+    // previous para on the right side instead of a blank.
+    if (rightPages.length === 0 && evenPage <= 0 && selectedJuz > 1) {
+      const prevJuz = juzData.find(j => j.juzNumber === selectedJuz - 1);
+      if (prevJuz && prevJuz.pages.length > 0) {
+        const lastPrevPage = prevJuz.pages[prevJuz.pages.length - 1];
+        rightPages = [lastPrevPage];
+      }
+    }
+
+    // Para Continuous: if oddPage doesn't exist in current juz (we're at the
+    // last even page) and paraContinuous is ON, pull the 1st page of next juz
+    if (leftPages.length === 0 && paraContinuous && selectedJuz < 30) {
+      const nextJuz = juzData.find(j => j.juzNumber === selectedJuz + 1);
+      if (nextJuz && nextJuz.pages.length > 0) {
+        // 1st page of next para
+        const firstNextPage = nextJuz.pages[0];
+        leftPages = [firstNextPage];
+      }
+    }
 
     // Combine: right page first (rendered first in RTL row-reverse), then left
     const pages = [...rightPages, ...leftPages];
     return pages.length > 0 ? pages : currentPages;
-  }, [dualPageView, currentPages, currentJuz, selectedDisplayPage]);
+  }, [dualPageView, currentPages, currentJuz, selectedDisplayPage, paraContinuous, selectedJuz, juzData]);
+
+  // Determine juz numbers for visible pages (for navigation display)
+  const visiblePagesJuzInfo = useMemo(() => {
+    return visiblePages.map(page => {
+      // Find which juz this page belongs to
+      for (const juz of juzData) {
+        if (juz.pages.some(p => p.pageIndex === page.pageIndex && p.pageNumber === page.pageNumber)) {
+          return { page, juzNumber: juz.juzNumber };
+        }
+      }
+      return { page, juzNumber: selectedJuz };
+    });
+  }, [visiblePages, juzData, selectedJuz]);
 
   // Combined ayahs for playback (all pages in view)
   const allPageAyahs = useMemo(() => {
@@ -316,6 +359,98 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
   useEffect(() => {
     pageContentRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   }, [selectedDisplayPage, selectedJuz]);
+
+  // Fit-to-height: if text content overflows vertically, auto-reduce font size
+  // (instead of enabling a vertical scrollbar).
+  useEffect(() => {
+    const rootEl = rootRef.current;
+    if (!rootEl) return;
+
+    const setScale = (value: number) => {
+      rootEl.style.setProperty("--hafezi-font-scale", value.toFixed(3));
+    };
+
+    const shouldAutoFit = (fitToHeight || dualPageView) && viewMode === "text";
+
+    // Reset when not in auto-fit mode
+    if (!shouldAutoFit) {
+      setScale(1);
+      return;
+    }
+
+    let rafId = 0;
+    const recompute = () => {
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        const pages = Array.from(
+          rootEl.querySelectorAll<HTMLElement>(".hafezi-page"),
+        );
+        if (pages.length === 0) {
+          setScale(1);
+          return;
+        }
+
+        const fitsAtScale = (scale: number) => {
+          setScale(scale);
+          // After applying, measure overflow in the next frame.
+          // But for responsiveness, we do a best-effort synchronous check;
+          // subsequent iterations will refine.
+          return pages.every((page) => {
+            const clientHeight = page.clientHeight;
+            const scrollHeight = page.scrollHeight;
+            return scrollHeight <= clientHeight + 1;
+          });
+        };
+
+        // Fast path: no overflow at scale 1.
+        setScale(1);
+        const overflowsAt1 = pages.some(
+          (page) => page.scrollHeight > page.clientHeight + 1,
+        );
+        if (!overflowsAt1) return;
+
+        const minScale = 0.55;
+        let low = minScale;
+        let high = 1;
+        let best = minScale;
+
+        for (let i = 0; i < 12; i++) {
+          const mid = (low + high) / 2;
+          if (fitsAtScale(mid)) {
+            best = mid;
+            low = mid;
+          } else {
+            high = mid;
+          }
+        }
+
+        setScale(best);
+      });
+    };
+
+    recompute();
+
+    const resizeObserver = new ResizeObserver(() => {
+      recompute();
+    });
+
+    // Observe layout-affecting elements.
+    const pageArea = rootEl.querySelector<HTMLElement>(".hafezi-page-area");
+    if (pageArea) resizeObserver.observe(pageArea);
+    const sidebar = rootEl.querySelector<HTMLElement>(".hafezi-sidebar");
+    if (sidebar) resizeObserver.observe(sidebar);
+    rootEl
+      .querySelectorAll<HTMLElement>(".hafezi-page")
+      .forEach((el) => resizeObserver.observe(el));
+
+    window.addEventListener("resize", recompute);
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      window.removeEventListener("resize", recompute);
+      resizeObserver.disconnect();
+    };
+  }, [fitToHeight, dualPageView, viewMode, selectedDisplayPage, selectedJuz, paraContinuous, sidebarOpen]);
 
   const handlePlayPage = () => {
     if (allPageAyahs.length === 0) return;
@@ -399,7 +534,10 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
   const dualLeftPage = isDualPage ? visiblePages[visiblePages.length - 1].displayPage : null;
 
   return (
-    <div className={`hafezi-quran${fitToHeight ? ' fit-to-height' : ''}`}>
+    <div
+      ref={rootRef}
+      className={`hafezi-quran${fitToHeight ? ' fit-to-height' : ''}${dualPageView ? ' dual-auto-fit' : ''}`}
+    >
       {/* ---- Left Control Panel ---- */}
       <div className={`hafezi-sidebar${sidebarOpen ? '' : ' collapsed'}`}>
         {/* Brand / Title */}
@@ -503,10 +641,22 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
                 : `Page ${selectedDisplayPage}`
               }
             </span>
-            <span className="hafezi-page-meta">
-              Para {selectedJuz} • {displayPageIdx + 1} of{" "}
-              {uniqueDisplayPages.length}
-            </span>
+            {isDualPage && visiblePagesJuzInfo.length === 2 ? (
+              // Show juz info for each page when they're from different paras
+              visiblePagesJuzInfo[0].juzNumber !== visiblePagesJuzInfo[1].juzNumber ? (
+                <span className="hafezi-page-meta">
+                  Page {visiblePagesJuzInfo[0].page.displayPage} from Para {visiblePagesJuzInfo[0].juzNumber} • Page {visiblePagesJuzInfo[1].page.displayPage} from Para {visiblePagesJuzInfo[1].juzNumber}
+                </span>
+              ) : (
+                <span className="hafezi-page-meta">
+                  Para {selectedJuz} • {displayPageIdx + 1} of {uniqueDisplayPages.length}
+                </span>
+              )
+            ) : (
+              <span className="hafezi-page-meta">
+                Para {selectedJuz} • {displayPageIdx + 1} of {uniqueDisplayPages.length}
+              </span>
+            )}
             {isDualPage && (
               <span className="hafezi-dual-badge">{dualPageView ? "Dual View" : "Side by Side"}</span>
             )}
@@ -588,6 +738,16 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
             <BookOpen size={16} />
             <span>{dualPageView ? '1 Page' : '2 Pages'}</span>
           </button>
+          {dualPageView && (
+            <button
+              className={`hafezi-view-toggle-btn ${paraContinuous ? "active" : ""}`}
+              onClick={() => setParaContinuous(!paraContinuous)}
+              title={paraContinuous ? "Para Continuous ON – last page of a para shows next para's first page" : "Para Continuous OFF – only show pages within current para"}
+            >
+              <Link2 size={16} />
+              <span>{paraContinuous ? 'Continuous' : 'Separated'}</span>
+            </button>
+          )}
         </div>
 
         {/* Playback */}
@@ -730,22 +890,27 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
       {/* ---- Right: Quran Page Area ---- */}
       <div className="hafezi-page-area" ref={pageContentRef}>
         <div className={`hafezi-page-wrapper ${isDualPage ? "dual" : ""}`}>
-          {visiblePages.map((page, idx) => (
-            <SinglePage
-              key={page.pageIndex}
-              page={page}
-              selectedJuz={selectedJuz}
-              currentAyah={currentAyah}
-              isPlaying={isPlaying}
-              onPlayAyah={onPlayAyah}
-              isDualPage={isDualPage}
-              viewMode={viewMode}
-              pagePosition={
-                isDualPage ? (idx === 0 ? "right" : "left") : undefined
-              }
-              jumpToAyah={jumpToAyah}
-            />
-          ))}
+          {visiblePages.map((page, idx) => {
+            const pageJuzInfo = visiblePagesJuzInfo.find(
+              info => info.page.pageIndex === page.pageIndex && info.page.pageNumber === page.pageNumber
+            );
+            return (
+              <SinglePage
+                key={`${page.pageIndex}-${page.pageNumber}`}
+                page={page}
+                selectedJuz={pageJuzInfo?.juzNumber || selectedJuz}
+                currentAyah={currentAyah}
+                isPlaying={isPlaying}
+                onPlayAyah={onPlayAyah}
+                isDualPage={isDualPage}
+                viewMode={viewMode}
+                pagePosition={
+                  isDualPage ? (idx === 0 ? "right" : "left") : undefined
+                }
+                jumpToAyah={jumpToAyah}
+              />
+            );
+          })}
         </div>
       </div>
     </div>

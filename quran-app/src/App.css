@@ -1143,10 +1143,37 @@ body {
   overflow: hidden;
 }
 
+/* Dual view auto-fit: no Y scroll, scale text to fit height */
+.hafezi-quran.dual-auto-fit {
+  --hafezi-font-scale: 1;
+}
+
+.hafezi-quran.dual-auto-fit .hafezi-page-area {
+  overflow: hidden;
+  align-items: stretch;
+  height: 100%;
+}
+
+.hafezi-quran.dual-auto-fit .hafezi-page-wrapper {
+  height: 100%;
+}
+
+.hafezi-quran.dual-auto-fit .hafezi-page {
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.hafezi-quran.dual-auto-fit .hafezi-page-content {
+  flex: 1;
+  overflow: hidden;
+}
+
 /* Fit-to-height modifier: compress sidebar and constrain page to viewport height */
 .hafezi-quran.fit-to-height {
   /* Fit to available viewport under the header */
   height: calc(100vh - var(--header-height));
+  --hafezi-font-scale: 1;
 }
 
 .hafezi-quran.fit-to-height .hafezi-sidebar {
@@ -1238,12 +1265,79 @@ body {
 .hafezi-quran.fit-to-height .hafezi-page {
   height: 100%;
   max-height: 100%;
-  overflow: auto;
+  overflow: hidden;
 }
 
 .hafezi-quran.fit-to-height .hafezi-page-content {
   padding: 8px 18px;
-  overflow: auto;
+  overflow: hidden;
+  flex: 1;
+}
+
+/* Auto-fit: scale text down when needed (no Y scrollbars) */
+.hafezi-quran.fit-to-height .hafezi-line {
+  font-size: calc(1.45rem * var(--hafezi-font-scale, 1));
+  word-spacing: calc(2px * var(--hafezi-font-scale, 1));
+}
+
+.hafezi-quran.dual-auto-fit .hafezi-line {
+  font-size: calc(1.45rem * var(--hafezi-font-scale, 1));
+  word-spacing: calc(2px * var(--hafezi-font-scale, 1));
+}
+
+.hafezi-quran.fit-to-height .hafezi-page-juz-badge {
+  font-size: calc(1rem * var(--hafezi-font-scale, 1));
+}
+
+.hafezi-quran.dual-auto-fit .hafezi-page-juz-badge {
+  font-size: calc(1rem * var(--hafezi-font-scale, 1));
+}
+
+.hafezi-quran.fit-to-height .hafezi-surah-name-ar {
+  font-size: calc(1.15rem * var(--hafezi-font-scale, 1));
+}
+
+.hafezi-quran.dual-auto-fit .hafezi-surah-name-ar {
+  font-size: calc(1.15rem * var(--hafezi-font-scale, 1));
+}
+
+.hafezi-quran.fit-to-height .hafezi-bismillah {
+  font-size: calc(1.2rem * var(--hafezi-font-scale, 1));
+}
+
+.hafezi-quran.dual-auto-fit .hafezi-bismillah {
+  font-size: calc(1.2rem * var(--hafezi-font-scale, 1));
+}
+
+.hafezi-quran.fit-to-height .hafezi-page-footer {
+  font-size: calc(0.85rem * var(--hafezi-font-scale, 1));
+}
+
+.hafezi-quran.dual-auto-fit .hafezi-page-footer {
+  font-size: calc(0.85rem * var(--hafezi-font-scale, 1));
+}
+
+/* Fit-to-height for dual page mode */
+.hafezi-quran.fit-to-height .hafezi-page-wrapper.dual {
+  height: 100%;
+}
+
+.hafezi-quran.fit-to-height .hafezi-page-half {
+  height: 100%;
+  overflow: hidden;
+}
+
+.hafezi-quran.fit-to-height .hafezi-page-half .hafezi-page {
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.hafezi-quran.fit-to-height .hafezi-page-half .hafezi-page-content {
+  overflow: hidden;
+  flex: 1;
 }
 
 /* ============================================
@@ -1952,6 +2046,7 @@ body {
   gap: 16px;
   flex-direction: row-reverse;
   max-width: 1500px;
+  align-items: stretch;
 }
 
 .hafezi-page-half.page-right {
@@ -1967,10 +2062,25 @@ body {
 .hafezi-page-half {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.hafezi-page-half .hafezi-page {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .hafezi-page-half .hafezi-page-content {
   font-size: 0.9em;
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* Dual auto-fit overrides: no internal scrolling */
+.hafezi-quran.dual-auto-fit .hafezi-page-half .hafezi-page-content {
+  overflow: hidden;
 }
 
 /* ---- Hafezi Responsive ---- */
