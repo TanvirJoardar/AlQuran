@@ -1143,6 +1143,109 @@ body {
   overflow: hidden;
 }
 
+/* Fit-to-height modifier: compress sidebar and constrain page to viewport height */
+.hafezi-quran.fit-to-height {
+  /* Fit to available viewport under the header */
+  height: calc(100vh - var(--header-height));
+}
+
+.hafezi-quran.fit-to-height .hafezi-sidebar {
+  overflow-y: auto;
+  padding-top: 8px;
+  height: 100%;
+  gap: clamp(4px, 1vh, 12px);
+}
+
+.hafezi-quran.fit-to-height .hafezi-sidebar-header {
+  padding: 8px 12px;
+}
+
+.hafezi-quran.fit-to-height .hafezi-sidebar-section {
+  padding: 6px 12px;
+  gap: 6px;
+}
+
+/* Row group: Para and Page side-by-side */
+.hafezi-row-group {
+  display: flex;
+  gap: 8px;
+  padding: 6px 12px;
+}
+
+.hafezi-row-group .hafezi-sidebar-section {
+  flex: 1;
+  padding: 0;
+  min-width: 0;
+}
+
+.hafezi-row-group .hafezi-sidebar-label {
+  font-size: 0.65rem;
+  margin-bottom: 4px;
+}
+
+.hafezi-row-group .hafezi-select {
+  font-size: 0.75rem;
+  padding: 6px 24px 6px 8px;
+}
+
+/* Button row: Image and Fit buttons side-by-side */
+.hafezi-sidebar-section.hafezi-button-row {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.hafezi-sidebar-section.hafezi-button-row .hafezi-sidebar-label {
+  width: 100%;
+  margin-bottom: 0;
+}
+
+.hafezi-sidebar-section.hafezi-button-row .hafezi-view-toggle-btn {
+  flex: 1;
+  padding: 6px 10px;
+  font-size: 0.75rem;
+}
+
+.hafezi-quran.fit-to-height .hafezi-sidebar-spacer {
+  flex: 1;
+  min-height: 0;
+}
+
+.hafezi-quran.fit-to-height .hafezi-player {
+  padding: 6px 10px;
+}
+
+.hafezi-quran.fit-to-height .hafezi-player-time {
+  display: none;
+}
+
+.hafezi-quran.fit-to-height .hafezi-player-volume-slider {
+  display: flex; /* keep volume visible by default */
+}
+
+.hafezi-quran.fit-to-height .hafezi-page-area {
+  padding: 8px;
+  overflow: hidden;
+  align-items: stretch;
+  height: 100%;
+}
+
+.hafezi-quran.fit-to-height .hafezi-page-wrapper {
+  height: 100%;
+  max-width: 100%;
+}
+
+.hafezi-quran.fit-to-height .hafezi-page {
+  height: 100%;
+  max-height: 100%;
+  overflow: auto;
+}
+
+.hafezi-quran.fit-to-height .hafezi-page-content {
+  padding: 8px 18px;
+  overflow: auto;
+}
+
 /* ============================================
    LEFT SIDEBAR / CONTROL PANEL
    ============================================ */
@@ -1158,6 +1261,7 @@ body {
   padding: 0;
   flex-shrink: 0;
   transition: width 0.25s ease, min-width 0.25s ease;
+  /* gap: clamp(8px, 1.5vh, 20px); */
 }
 
 .hafezi-sidebar.collapsed {

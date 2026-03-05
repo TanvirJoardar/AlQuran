@@ -14,6 +14,8 @@ import {
   BookOpen,
   Type,
   Image,
+  Maximize2,
+  Minimize2,
   SkipBack,
   SkipForward,
   Square,
@@ -132,6 +134,7 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
   const [isPagePlaying, setIsPagePlaying] = useState(false);
   const [viewMode, setViewMode] = useState<"text" | "image">("text");
   const [prevVolume, setPrevVolume] = useState(1);
+  const [fitToHeight, setFitToHeight] = useState(false);
   const pageContentRef = useRef<HTMLDivElement>(null);
 
   const playerProgress = duration > 0 ? (currentTime / duration) * 100 : 0;
@@ -357,7 +360,7 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
   const displayPageIdx = uniqueDisplayPages.indexOf(selectedDisplayPage);
 
   return (
-    <div className="hafezi-quran">
+    <div className={`hafezi-quran${fitToHeight ? ' fit-to-height' : ''}`}>
       {/* ---- Left Control Panel ---- */}
       <div className={`hafezi-sidebar${sidebarOpen ? '' : ' collapsed'}`}>
         {/* Brand / Title */}
@@ -366,45 +369,90 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
           <span className="hafezi-title">Hafezi Quran</span>
         </div>
 
-        {/* Para (Juz) Selector */}
-        <div className="hafezi-sidebar-section">
-          <label className="hafezi-sidebar-label">PARA (JUZ)</label>
-          <select
-            value={selectedJuz}
-            onChange={(e) => setSelectedJuz(Number(e.target.value))}
-            className="hafezi-select"
-          >
-            {Array.from({ length: 30 }, (_, i) => i + 1).map((j) => (
-              <option key={j} value={j}>
-                {j} - {juzNames[j]}
-              </option>
-            ))}
-          </select>
-        </div>
+        {/* Para (Juz) Selector + Page Selector */}
+        {fitToHeight ? (
+          <div className="hafezi-row-group">
+            <div className="hafezi-sidebar-section">
+              <label className="hafezi-sidebar-label">PARA (JUZ)</label>
+              <select
+                value={selectedJuz}
+                onChange={(e) => setSelectedJuz(Number(e.target.value))}
+                className="hafezi-select"
+              >
+                {Array.from({ length: 30 }, (_, i) => i + 1).map((j) => (
+                  <option key={j} value={j}>
+                    {j} - {juzNames[j]}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-        {/* Page Selector */}
-        <div className="hafezi-sidebar-section">
-          <label className="hafezi-sidebar-label">PAGE</label>
-          <select
-            value={selectedDisplayPage}
-            onChange={(e) => setSelectedDisplayPage(Number(e.target.value))}
-            className="hafezi-select"
-          >
-            {uniqueDisplayPages.map((dp) => {
-              const pagesWithDp = currentJuz.pages.filter(
-                (p) => p.displayPage === dp,
-              );
-              const suffix =
-                pagesWithDp.length > 1 ? ` (${pagesWithDp.length} pages)` : "";
-              return (
-                <option key={dp} value={dp}>
-                  {dp}
-                  {suffix}
-                </option>
-              );
-            })}
-          </select>
-        </div>
+            <div className="hafezi-sidebar-section">
+              <label className="hafezi-sidebar-label">PAGE</label>
+              <select
+                value={selectedDisplayPage}
+                onChange={(e) => setSelectedDisplayPage(Number(e.target.value))}
+                className="hafezi-select"
+              >
+                {uniqueDisplayPages.map((dp) => {
+                  const pagesWithDp = currentJuz.pages.filter(
+                    (p) => p.displayPage === dp,
+                  );
+                  const suffix =
+                    pagesWithDp.length > 1 ? ` (${pagesWithDp.length} pages)` : "";
+                  return (
+                    <option key={dp} value={dp}>
+                      {dp}
+                      {suffix}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Para (Juz) Selector */}
+            <div className="hafezi-sidebar-section">
+              <label className="hafezi-sidebar-label">PARA (JUZ)</label>
+              <select
+                value={selectedJuz}
+                onChange={(e) => setSelectedJuz(Number(e.target.value))}
+                className="hafezi-select"
+              >
+                {Array.from({ length: 30 }, (_, i) => i + 1).map((j) => (
+                  <option key={j} value={j}>
+                    {j} - {juzNames[j]}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Page Selector */}
+            <div className="hafezi-sidebar-section">
+              <label className="hafezi-sidebar-label">PAGE</label>
+              <select
+                value={selectedDisplayPage}
+                onChange={(e) => setSelectedDisplayPage(Number(e.target.value))}
+                className="hafezi-select"
+              >
+                {uniqueDisplayPages.map((dp) => {
+                  const pagesWithDp = currentJuz.pages.filter(
+                    (p) => p.displayPage === dp,
+                  );
+                  const suffix =
+                    pagesWithDp.length > 1 ? ` (${pagesWithDp.length} pages)` : "";
+                  return (
+                    <option key={dp} value={dp}>
+                      {dp}
+                      {suffix}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+          </>
+        )}
 
         {/* Page Navigation */}
         <div className="hafezi-sidebar-section">
@@ -466,7 +514,7 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
         <div className="hafezi-sidebar-divider" />
 
         {/* View Mode Toggle */}
-        <div className="hafezi-sidebar-section">
+        <div className={`hafezi-sidebar-section${fitToHeight ? ' hafezi-button-row' : ''}`}>
           <label className="hafezi-sidebar-label">VIEW MODE</label>
           <button
             className={`hafezi-view-toggle-btn ${viewMode === "image" ? "active" : ""}`}
@@ -479,6 +527,14 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
           >
             {viewMode === "text" ? <Image size={16} /> : <Type size={16} />}
             <span>{viewMode === "text" ? "Image" : "Text"}</span>
+          </button>
+          <button
+            className={`hafezi-view-toggle-btn ${fitToHeight ? "active" : ""}`}
+            onClick={() => setFitToHeight(!fitToHeight)}
+            title={fitToHeight ? 'Exit fit-to-height' : 'Fit page and sidebar to device height'}
+          >
+            {fitToHeight ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+            <span>{fitToHeight ? 'Scroll' : 'Fit'}</span>
           </button>
         </div>
 
