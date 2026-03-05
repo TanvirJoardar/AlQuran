@@ -343,10 +343,20 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
     });
   }, [visiblePages, juzData, selectedJuz]);
 
-  // Combined ayahs for playback (all pages in view)
+  // Combined ayahs for playback — always use only the selected page,
+  // Ayahs for playback in dual view:
+  //   • Selected page is EVEN (sits on the right): play the even page first,
+  //     then the companion odd page (left) — visiblePages is already [even, odd].
+  //   • Selected page is ODD (sits on the left): only play the selected page;
+  //     the even page on the right belongs to the previous reading position.
+  //   • Single-page view: play only the current page as usual.
   const allPageAyahs = useMemo(() => {
-    return visiblePages.flatMap((p) => p.ayahs);
-  }, [visiblePages]);
+    if (dualPageView && selectedDisplayPage % 2 === 0) {
+      // Even selected → play right (even) then left (odd)
+      return visiblePages.flatMap((p) => p.ayahs);
+    }
+    return currentPages.flatMap((p) => p.ayahs);
+  }, [dualPageView, selectedDisplayPage, visiblePages, currentPages]);
 
   // Reset display page when juz changes
   useEffect(() => {
