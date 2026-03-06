@@ -13,7 +13,30 @@ import './App.css';
 
 type ViewMode = 'surah' | 'hafezi' | 'recitation' | 'admin';
 
+interface Reciter {
+  id: string;
+  name: string;
+  quality: string;
+  urlPattern: string;
+}
+
+const RECITERS: Reciter[] = [
+  {
+    id: 'ar.abdurrahmaansudais',
+    name: 'Abdurrahman As-Sudais',
+    quality: '192',
+    urlPattern: 'https://cdn.islamic.network/quran/audio/192/ar.abdurrahmaansudais'
+  },
+  {
+    id: 'ar.alafasy',
+    name: 'Mishary Rashid Alafasy',
+    quality: '128',
+    urlPattern: 'https://cdn.islamic.network/quran/audio/128/ar.alafasy'
+  }
+];
+
 function App() {
+  const [originalQuranData, setOriginalQuranData] = useState<QuranData | null>(null);
   const [quranData, setQuranData] = useState<QuranData | null>(null);
   const [selectedSurah, setSelectedSurah] = useState<Surah | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -25,6 +48,16 @@ function App() {
   const [dbReady, setDbReady] = useState(false);
   const [hafeziJumpAyah, setHafeziJumpAyah] = useState<Ayah | null>(null);
   const [recitationActive, setRecitationActive] = useState(false);
+  const [selectedReciter, setSelectedReciter] = useState<Reciter>(RECITERS[0]);
+
+  // Transform audio URL based on selected reciter
+  const transformAudioUrl = useCallback((originalUrl: string): string => {
+    // Extract ayah number from original URL (last segment before .mp3)
+    const match = originalUrl.match(/\/(\d+)\.mp3$/);
+    if (!match) return originalUrl;
+    const ayahNumber = match[1];
+    return `${selectedReciter.urlPattern}/${ayahNumber}.mp3`;
+  }, [selectedReciter]);
 
   // Main player: Surah view + Recitation view
   const player = useAudioPlayer();
@@ -98,8 +131,24 @@ function App() {
         return res.json();
       })
       .then((data: QuranData) => {
-        setQuranData(data);
-        setSelectedSurah(data.data.surahs[0]);
+        // Store original data
+        setOriginalQuranData(data);
+        // Transform all audio URLs to use the selected reciter
+        const transformedData = {
+          ...data,
+          data: {
+            ...data.data,
+            surahs: data.data.surahs.map(surah => ({
+              ...surah,
+              ayahs: surah.ayahs.map(ayah => ({
+                ...ayah,
+                audio: transformAudioUrl(ayah.audio)
+              }))
+            }))
+          }
+        };
+        setQuranData(transformedData);
+        setSelectedSurah(transformedData.data.surahs[0]);
         setLoading(false);
       })
       .catch(err => {
@@ -121,6 +170,33 @@ function App() {
   const handleMappingsChanged = useCallback(() => {
     setMappingsVersion(v => v + 1);
   }, []);
+
+  // Update audio URLs when reciter changes
+  useEffect(() => {
+    if (!originalQuranData) return;
+    const transformedData = {
+      ...originalQuranData,
+      data: {
+        ...originalQuranData.data,
+        surahs: originalQuranData.data.surahs.map(surah => ({
+          ...surah,
+          ayahs: surah.ayahs.map(ayah => ({
+            ...ayah,
+            audio: transformAudioUrl(ayah.audio)
+          }))
+        }))
+      }
+    };
+    setQuranData(transformedData);
+    // Update selected surah with new audio URLs
+    if (selectedSurah) {
+      const updatedSurah = transformedData.data.surahs.find(s => s.number === selectedSurah.number);
+      if (updatedSurah) setSelectedSurah(updatedSurah);
+    }
+    // Stop any playing audio when switching reciters
+    player.stop();
+    hafeziPlayer.stop();
+  }, [selectedReciter.id]); // Only depend on reciter ID to avoid infinite loop
 
   useEffect(() => {
     if (selectedSurah) {
@@ -233,9 +309,20 @@ function App() {
         <div className="header-right">
           <div className="reciter-info">
             <span className="reciter-label">Reciter</span>
-            <span className="reciter-name">
-              {quranData?.data.edition.englishName}
-            </span>
+            <select
+              className="reciter-select"
+              value={selectedReciter.id}
+              onChange={(e) => {
+                const reciter = RECITERS.find(r => r.id === e.target.value);
+                if (reciter) setSelectedReciter(reciter);
+              }}
+            >
+              {RECITERS.map(reciter => (
+                <option key={reciter.id} value={reciter.id}>
+                  {reciter.name}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
       </header>
