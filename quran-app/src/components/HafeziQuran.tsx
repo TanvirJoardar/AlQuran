@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useRef } from "react";
+import React, { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import type { Surah, Ayah } from "../types/quran";
 import { toArabicNumber, formatTime } from "../utils/helpers";
 import { getPageMappings } from "../services/database";
@@ -69,6 +69,13 @@ interface HafeziQuranProps {
   onNext: () => void;
   onVolumeChange: (vol: number) => void;
   sidebarOpen?: boolean;
+  // Recitation-awareness props
+  isRecitationActive?: boolean;
+  onResumeMainFromAyah?: (ayah: Ayah) => void;
+  onSetOnPlaylistEnd?: (cb: (() => void) | null) => void;
+  onResetPlayer?: () => void;
+  mainPlayerCurrentAyah?: Ayah | null;
+  mainPlayerIsPlaying?: boolean;
 }
 
 // Arabic Juz names
@@ -128,6 +135,12 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
   onNext,
   onVolumeChange,
   sidebarOpen = true,
+  isRecitationActive = false,
+  onResumeMainFromAyah,
+  onSetOnPlaylistEnd,
+  onResetPlayer,
+  mainPlayerCurrentAyah,
+  mainPlayerIsPlaying = false,
 }) => {
   const rootRef = useRef<HTMLDivElement>(null);
   const [selectedJuz, setSelectedJuz] = useState(1);
@@ -140,6 +153,10 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
   const [dualPageView, setDualPageView] = useState(false);
   const [paraContinuous, setParaContinuous] = useState(true);
   const pageContentRef = useRef<HTMLDivElement>(null);
+
+  // When recitation is active and hafezi player isn't playing, track the main player's ayah
+  const effectiveCurrentAyah = (isRecitationActive && !currentAyah) ? (mainPlayerCurrentAyah ?? null) : currentAyah;
+  const effectiveIsPlaying = (isRecitationActive && !currentAyah) ? mainPlayerIsPlaying : isPlaying;
 
   const playerProgress = duration > 0 ? (currentTime / duration) * 100 : 0;
   const VolumeIcon = volume === 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2;
@@ -471,12 +488,44 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
       return;
     }
 
-    onSetRepeat(repeatOn);
-    onSetAyahsList(allPageAyahs);
-    onSetAutoPlayNext(true);
-    onPlayPage(allPageAyahs);
-    setIsPagePlaying(true);
+    if (isRecitationActive && onResumeMainFromAyah) {
+      // Resume recitation from the first ayah on this page
+      onResumeMainFromAyah(allPageAyahs[0]);
+    } else {
+      onSetRepeat(repeatOn);
+      onSetAyahsList(allPageAyahs);
+      onSetAutoPlayNext(true);
+      onSetOnPlaylistEnd?.(() => {
+        onResetPlayer?.();
+        setIsPagePlaying(false);
+      });
+      onPlayPage(allPageAyahs);
+      setIsPagePlaying(true);
+    }
   };
+
+  // Handle ayah click: play from clicked ayah through end of all visible pages
+  const handleAyahClick = useCallback((ayah: Ayah) => {
+    if (isRecitationActive && onResumeMainFromAyah) {
+      // Resume recitation from clicked ayah (uses main player's existing playlist + repeat config)
+      onResumeMainFromAyah(ayah);
+    } else {
+      // Use hafezi player: play from clicked ayah through end of visible pages
+      const allVisibleAyahs = visiblePages.flatMap(p => p.ayahs);
+      const clickedIdx = allVisibleAyahs.findIndex(a => a.number === ayah.number);
+      const remainingAyahs = clickedIdx >= 0 ? allVisibleAyahs.slice(clickedIdx) : [ayah];
+
+      onSetRepeat(false);
+      onSetAyahsList(remainingAyahs);
+      onSetAutoPlayNext(true);
+      onSetOnPlaylistEnd?.(() => {
+        onResetPlayer?.();
+        setIsPagePlaying(false);
+      });
+      onPlayAyah(ayah);
+      setIsPagePlaying(true);
+    }
+  }, [visiblePages, isRecitationActive, onResumeMainFromAyah, onSetRepeat, onSetAyahsList, onSetAutoPlayNext, onSetOnPlaylistEnd, onResetPlayer, onPlayAyah]);
 
   const handleToggleRepeat = () => {
     const newVal = !repeatOn;
@@ -909,15 +958,14 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
                 key={`${page.pageIndex}-${page.pageNumber}`}
                 page={page}
                 selectedJuz={pageJuzInfo?.juzNumber || selectedJuz}
-                currentAyah={currentAyah}
-                isPlaying={isPlaying}
-                onPlayAyah={onPlayAyah}
+                currentAyah={effectiveCurrentAyah}
+                isPlaying={effectiveIsPlaying}
+                onPlayAyah={handleAyahClick}
                 isDualPage={isDualPage}
                 viewMode={viewMode}
                 pagePosition={
                   isDualPage ? (idx === 0 ? "right" : "left") : undefined
                 }
-                jumpToAyah={jumpToAyah}
               />
             );
           })}
@@ -938,7 +986,6 @@ interface SinglePageProps {
   isDualPage: boolean;
   viewMode: "text" | "image";
   pagePosition?: "right" | "left";
-  jumpToAyah?: Ayah | null;
 }
 
 const SinglePage: React.FC<SinglePageProps> = ({
@@ -950,7 +997,6 @@ const SinglePage: React.FC<SinglePageProps> = ({
   isDualPage,
   viewMode,
   pagePosition,
-  jumpToAyah,
 }) => {
 
   // Normalize Arabic text for better comparison (e.g. to detect Bismillah)
@@ -1026,7 +1072,7 @@ const SinglePage: React.FC<SinglePageProps> = ({
       }
 
       const ayahText = `${ayah.text} ﴿${toArabicNumber(ayah.numberInSurah)}﴾`;
-      const isActive = currentAyah?.number === ayah.number || jumpToAyah?.number === ayah.number;
+      const isActive = currentAyah?.number === ayah.number;
 
       if (
         lines.length === 0 ||
@@ -1046,7 +1092,7 @@ const SinglePage: React.FC<SinglePageProps> = ({
     });
 
     return lines;
-  }, [page, currentAyah, isPlaying, surahStartsOnPage, jumpToAyah]);
+  }, [page, currentAyah, isPlaying, surahStartsOnPage]);
 
   return (
     <div
@@ -1114,7 +1160,7 @@ const SinglePage: React.FC<SinglePageProps> = ({
                   <span
                     key={`${part.ayah.number}-${partIdx}`}
                     className={`hafezi-ayah-text ${
-                      (currentAyah?.number === part.ayah.number || jumpToAyah?.number === part.ayah.number) ? "active" : ""
+                      currentAyah?.number === part.ayah.number ? "active" : ""
                     } ${part.isPlaying ? "playing" : ""}`}
                     onClick={() => onPlayAyah(part.ayah)}
                     title={`Ayah ${part.ayah.numberInSurah}`}

@@ -24,6 +24,7 @@ function App() {
   const [mappingsVersion, setMappingsVersion] = useState(0);
   const [dbReady, setDbReady] = useState(false);
   const [hafeziJumpAyah, setHafeziJumpAyah] = useState<Ayah | null>(null);
+  const [recitationActive, setRecitationActive] = useState(false);
 
   // Main player: Surah view + Recitation view
   const player = useAudioPlayer();
@@ -50,6 +51,12 @@ function App() {
   const mainPlaySurah = useCallback((ayahs: Ayah[]) => {
     hafeziPlayer.stop();
     player.playSurah(ayahs);
+  }, [player, hafeziPlayer]);
+
+  // Resume the main player from a specific ayah (preserves playlist, repeat, etc.)
+  const resumeMainPlayerFromAyah = useCallback((ayah: Ayah) => {
+    hafeziPlayer.stop();
+    player.playAyah(ayah);
   }, [player, hafeziPlayer]);
 
   const handleSetViewMode = useCallback((mode: ViewMode, jumpTo?: Ayah | null) => {
@@ -296,8 +303,20 @@ function App() {
               onPrevious={hafeziPlayer.previousAyah}
               onNext={hafeziPlayer.nextAyah}
               onVolumeChange={hafeziPlayer.setVolume}
+              isRecitationActive={recitationActive}
+              onResumeMainFromAyah={resumeMainPlayerFromAyah}
+              onSetOnPlaylistEnd={hafeziPlayer.setOnPlaylistEnd}
+              onResetPlayer={hafeziPlayer.reset}
+              mainPlayerCurrentAyah={player.currentAyah}
+              mainPlayerIsPlaying={player.isPlaying}
             />
-          ) : viewMode === 'recitation' ? (
+          ) : viewMode === 'admin' ? (
+            <AdminPanel
+              surahs={quranData?.data.surahs || []}
+              onMappingsChanged={handleMappingsChanged}
+            />
+          ) : null}
+          <div style={{ display: viewMode === 'recitation' ? undefined : 'none' }}>
             <RecitationPanel
               surahs={quranData?.data.surahs || []}
               currentAyah={player.currentAyah}
@@ -310,13 +329,9 @@ function App() {
               onSetAyahsList={player.setAyahsList}
               onSetAutoPlayNext={player.setAutoPlayNext}
               onSetOnPlaylistEnd={player.setOnPlaylistEnd}
+              onActiveChange={setRecitationActive}
             />
-          ) : (
-            <AdminPanel
-              surahs={quranData?.data.surahs || []}
-              onMappingsChanged={handleMappingsChanged}
-            />
-          )}
+          </div>
         </main>
       </div>
 

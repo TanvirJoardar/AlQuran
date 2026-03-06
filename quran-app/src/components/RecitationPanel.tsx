@@ -26,6 +26,7 @@ interface RecitationPanelProps {
   onSetAyahsList: (ayahs: Ayah[]) => void;
   onSetAutoPlayNext: (v: boolean) => void;
   onSetOnPlaylistEnd: (cb: (() => void) | null) => void;
+  onActiveChange?: (active: boolean) => void;
 }
 
 type EnrichedAyah = Ayah & { surahNumber: number; surahName: string; juzNumber: number; pageIndex: number };
@@ -56,6 +57,7 @@ export const RecitationPanel: React.FC<RecitationPanelProps> = ({
   onSetAyahsList,
   onSetAutoPlayNext,
   onSetOnPlaylistEnd,
+  onActiveChange,
 }) => {
   const [selectedPage, setSelectedPage] = useState(1);
   const [fromPara, setFromPara] = useState(1);
@@ -155,13 +157,10 @@ export const RecitationPanel: React.FC<RecitationPanelProps> = ({
     return match ? match.displayPage : null;
   }, [currentAyah, isActive, allAyahsMap]);
 
-  // Detect playback ending — only used when repeat is off (rounds=1); multi-round handled via onSetOnPlaylistEnd
+  // Notify parent when recitation active state changes
   useEffect(() => {
-    if (isActive && !isPlaying && !isLoading) {
-      setIsActive(false);
-      isActiveRef.current = false;
-    }
-  }, [isPlaying, isLoading, isActive]);
+    onActiveChange?.(isActive);
+  }, [isActive, onActiveChange]);
 
   // Keep refs in sync
   useEffect(() => { repeatCountRef.current = repeatCount; }, [repeatCount]);

@@ -192,6 +192,27 @@ export function useAudioPlayer() {
     setState(prev => ({ ...prev, isPlaying: false, currentTime: 0 }));
   }, []);
 
+  const pause = useCallback(() => {
+    bufsRef.current?.forEach(a => { a.pause(); });
+    setState(prev => ({ ...prev, isPlaying: false }));
+  }, []);
+
+  const reset = useCallback(() => {
+    bufsRef.current?.forEach(a => { a.pause(); a.src = ''; a.dataset.ayahNumber = ''; });
+    ayahsRef.current = [];
+    autoPlayNextRef.current = false;
+    repeatModeRef.current = false;
+    onPlaylistEndRef.current = null;
+    setState({
+      isPlaying: false,
+      currentAyah: null,
+      currentTime: 0,
+      duration: 0,
+      isLoading: false,
+      volume: volumeRef.current,
+    });
+  }, []);
+
   const seek = useCallback((time: number) => {
     const active = getActive();
     if (!active) return;
@@ -250,6 +271,8 @@ export function useAudioPlayer() {
     playAyah,
     togglePlay,
     stop,
+    pause,
+    reset,
     seek,
     setAyahsList,
     setAutoPlayNext,
