@@ -484,6 +484,7 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
 
     if (isPagePlaying && isPlaying) {
       onStop();
+      onResetPlayer?.();
       setIsPagePlaying(false);
       return;
     }
@@ -569,6 +570,26 @@ export const HafeziQuran: React.FC<HafeziQuranProps> = ({
       setIsPagePlaying(false);
     }
   }, [isPlaying, isLoading, isPagePlaying]);
+
+  // Auto-navigate to the page containing the currently playing ayah
+  useEffect(() => {
+    if (!effectiveCurrentAyah || juzData.length === 0) return;
+    // Check if the ayah is already on a visible page
+    const alreadyVisible = visiblePages.some(p =>
+      p.ayahs.some(a => a.number === effectiveCurrentAyah.number)
+    );
+    if (alreadyVisible) return;
+    // Navigate to the page containing this ayah
+    for (const juz of juzData) {
+      for (const page of juz.pages) {
+        if (page.ayahs.some(a => a.number === effectiveCurrentAyah.number)) {
+          if (juz.juzNumber !== selectedJuz) setSelectedJuz(juz.juzNumber);
+          if (page.displayPage !== selectedDisplayPage) setSelectedDisplayPage(page.displayPage);
+          return;
+        }
+      }
+    }
+  }, [effectiveCurrentAyah, juzData, visiblePages, selectedJuz, selectedDisplayPage]);
 
   // Navigate sidebar to the page containing `currentAyah`
   const handleGoToCurrentAyah = () => {
